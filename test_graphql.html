@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test GraphQL - Customer Fetching and Creation</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f5f5f5; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background-color: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .section { 
+            margin-bottom: 30px; 
+            padding: 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+        }
+        .section h3 { 
+            margin-top: 0; 
+            color: #333; 
+        }
+        button { 
+            background-color: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            margin: 5px; 
+        }
+        button:hover { 
+            background-color: #0056b3; 
+        }
+        .results { 
+            background-color: #f8f9fa; 
+            border: 1px solid #e9ecef; 
+            border-radius: 4px; 
+            padding: 10px; 
+            margin-top: 10px; 
+            white-space: pre-wrap; 
+            font-family: monospace; 
+        }
+        .error { 
+            background-color: #f8d7da; 
+            border-color: #f5c6cb; 
+            color: #721c24; 
+        }
+        .success { 
+            background-color: #d4edda; 
+            border-color: #c3e6cb; 
+            color: #155724; 
+        }
+        input, textarea { 
+            width: 100%; 
+            padding: 8px; 
+            margin: 5px 0; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GraphQL Customer Management Test</h1>
+        <p>This page demonstrates fetching and creating customers using GraphQL queries and mutations.</p>
+        
+        <div class="section">
+            <h3>1. Fetch All Customers</h3>
+            <p>Test the GraphQL query to retrieve all customers:</p>
+            <button onclick="fetchCustomers()">Fetch Customers</button>
+            <div id="fetchResults" class="results"></div>
+        </div>
+        
+        <div class="section">
+            <h3>2. Create New Customer</h3>
+            <p>Test the GraphQL mutation to create a new customer:</p>
+            <input type="text" id="customerName" placeholder="Customer Name" value="John Doe">
+            <input type="email" id="customerEmail" placeholder="Customer Email" value="john.doe@example.com">
+            <input type="text" id="customerPhone" placeholder="Customer Phone" value="123-456-7890">
+            <textarea id="customerAddress" placeholder="Customer Address" rows="2">123 Main St, City, State</textarea>
+            <button onclick="createCustomer()">Create Customer</button>
+            <div id="createResults" class="results"></div>
+        </div>
+        
+        <div class="section">
+            <h3>3. Raw GraphQL Queries</h3>
+            <p>View the actual GraphQL queries being sent:</p>
+            <h4>Fetch Query:</h4>
+            <div class="results">
+query GetCustomers($skip: Int, $limit: Int, $search: String) {
+  customers(skip: $skip, limit: $limit, search: $search) {
+    items {
+      id
+      name
+      email
+      phone
+      address
+      createdAt
+      updatedAt
+    }
+    total
+    page
+    pages
+  }
+}
+            </div>
+            
+            <h4>Create Mutation:</h4>
+            <div class="results">
+mutation CreateCustomer($input: CustomerCreate!) {
+  createCustomer(input: $input) {
+    id
+    name
+    email
+    phone
+    address
+    createdAt
+    updatedAt
+  }
+}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GRAPHQL_URL = 'http://localhost:8000/graphql';
+        
+        async function graphqlRequest(query, variables = {}) {
+            try {
+                const response = await fetch(GRAPHQL_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query,
+                        variables
+                    })
+                });
+                
+                const result = await response.json();
+                return result;
+            } catch (error) {
+                return { errors: [{ message: error.message }] };
+            }
+        }
+        
+        async function fetchCustomers() {
+            const resultsDiv = document.getElementById('fetchResults');
+            resultsDiv.textContent = 'Loading...';
+            resultsDiv.className = 'results';
+            
+            const query = `
+                query GetCustomers($skip: Int, $limit: Int, $search: String) {
+                    customers(skip: $skip, limit: $limit, search: $search) {
+                        items {
+                            id
+                            name
+                            email
+                            phone
+                            address
+                            createdAt
+                            updatedAt
+                        }
+                        total
+                        page
+                        pages
+                    }
+                }
+            `;
+            
+            const variables = {
+                skip: 0,
+                limit: 10,
+                search: null
+            };
+            
+            const result = await graphqlRequest(query, variables);
+            
+            if (result.errors) {
+                resultsDiv.className = 'results error';
+                resultsDiv.textContent = 'Error: ' + JSON.stringify(result.errors, null, 2);
+            } else {
+                resultsDiv.className = 'results success';
+                resultsDiv.textContent = 'Success!\n\n' + JSON.stringify(result.data, null, 2);
+            }
+        }
+        
+        async function createCustomer() {
+            const resultsDiv = document.getElementById('createResults');
+            resultsDiv.textContent = 'Creating customer...';
+            resultsDiv.className = 'results';
+            
+            const name = document.getElementById('customerName').value;
+            const email = document.getElementById('customerEmail').value;
+            const phone = document.getElementById('customerPhone').value;
+            const address = document.getElementById('customerAddress').value;
+            
+            if (!name || !email) {
+                resultsDiv.className = 'results error';
+                resultsDiv.textContent = 'Error: Name and email are required';
+                return;
+            }
+            
+            const mutation = `
+                mutation CreateCustomer($input: CustomerCreate!) {
+                    createCustomer(input: $input) {
+                        id
+                        name
+                        email
+                        phone
+                        address
+                        createdAt
+                        updatedAt
+                    }
+                }
+            `;
+            
+            const variables = {
+                input: {
+                    name,
+                    email,
+                    phone,
+                    address
+                }
+            };
+            
+            const result = await graphqlRequest(mutation, variables);
+            
+            if (result.errors) {
+                resultsDiv.className = 'results error';
+                resultsDiv.textContent = 'Error: ' + JSON.stringify(result.errors, null, 2);
+            } else {
+                resultsDiv.className = 'results success';
+                resultsDiv.textContent = 'Customer created successfully!\n\n' + JSON.stringify(result.data, null, 2);
+                
+                // Clear the form
+                document.getElementById('customerName').value = '';
+                document.getElementById('customerEmail').value = '';
+                document.getElementById('customerPhone').value = '';
+                document.getElementById('customerAddress').value = '';
+                
+                // Refresh the customer list
+                setTimeout(fetchCustomers, 1000);
+            }
+        }
+        
+        // Automatically fetch customers when page loads
+        window.onload = function() {
+            fetchCustomers();
+        };
+    </script>
+</body>
+</html>
