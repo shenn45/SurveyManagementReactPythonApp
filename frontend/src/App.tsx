@@ -1,11 +1,18 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-// import { ApolloProvider } from '@apollo/client/react';
-// import client from './apollo/client';
+import { ApolloProvider } from '@apollo/client/react';
+import client from './apollo/client';
 import Sidebar from './components/Sidebar';
 import Customers from './pages/Customers';
+import Surveys from './pages/Surveys';
+import Properties from './pages/Properties';
+import { useCustomers, useSurveys, useProperties } from './hooks/useGraphQLApi';
 
 function Dashboard() {
+  const { data: customersData, loading: customersLoading } = useCustomers(1, 1); // Just get count
+  const { data: surveysData, loading: surveysLoading } = useSurveys(1, 1); // Just get count
+  const { data: propertiesData, loading: propertiesLoading } = useProperties(1, 1); // Just get count
+
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
@@ -23,7 +30,9 @@ function Dashboard() {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Total Surveys</dt>
-                  <dd className="text-lg font-medium text-gray-900">-</dd>
+                  <dd className="text-lg font-medium text-gray-900">
+                    {surveysLoading ? 'Loading...' : surveysData?.total || 0}
+                  </dd>
                 </dl>
               </div>
             </div>
@@ -41,7 +50,9 @@ function Dashboard() {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Active Customers</dt>
-                  <dd className="text-lg font-medium text-gray-900">-</dd>
+                  <dd className="text-lg font-medium text-gray-900">
+                    {customersLoading ? 'Loading...' : customersData?.total || 0}
+                  </dd>
                 </dl>
               </div>
             </div>
@@ -59,7 +70,9 @@ function Dashboard() {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Properties</dt>
-                  <dd className="text-lg font-medium text-gray-900">-</dd>
+                  <dd className="text-lg font-medium text-gray-900">
+                    {propertiesLoading ? 'Loading...' : propertiesData?.total || 0}
+                  </dd>
                 </dl>
               </div>
             </div>
@@ -70,39 +83,23 @@ function Dashboard() {
   );
 }
 
-function Surveys() {
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold text-gray-900">Surveys</h1>
-      <p className="text-gray-600">Survey management functionality coming soon...</p>
-    </div>
-  );
-}
-
-function Properties() {
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold text-gray-900">Properties</h1>
-      <p className="text-gray-600">Property management functionality coming soon...</p>
-    </div>
-  );
-}
-
 function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-100 flex">
-        <Sidebar />
-        <main className="flex-1">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/surveys" element={<Surveys />} />
-            <Route path="/customers" element={<Customers />} />
-            <Route path="/properties" element={<Properties />} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+    <ApolloProvider client={client}>
+      <Router>
+        <div className="min-h-screen bg-gray-100 flex">
+          <Sidebar />
+          <main className="flex-1">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/surveys" element={<Surveys />} />
+              <Route path="/customers" element={<Customers />} />
+              <Route path="/properties" element={<Properties />} />
+            </Routes>
+          </main>
+        </div>
+      </Router>
+    </ApolloProvider>
   );
 }
 

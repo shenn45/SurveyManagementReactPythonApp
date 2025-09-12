@@ -1,18 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { customerApi } from '../api';
 import { Customer, CustomerCreate } from '../types';
 import Modal from '../components/Modal';
 import SearchBar from '../components/SearchBar';
 import Pagination from '../components/Pagination';
+import { 
+  useCustomers, 
+  useCreateCustomer, 
+  useUpdateCustomer, 
+  useDeleteCustomer 
+} from '../hooks/useGraphQLApi';
 
 export default function Customers() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState<CustomerCreate>({
@@ -29,39 +30,33 @@ export default function Customers() {
 
   const pageSize = 20;
 
-  const fetchCustomers = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await customerApi.getAll(currentPage, pageSize, searchTerm || undefined);
-      setCustomers(response.customers);
-      setTotalPages(Math.ceil(response.total / pageSize));
-    } catch (err) {
-      setError('Failed to fetch customers');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, searchTerm]);
+  // GraphQL hooks
+  const { data: customersData, loading, error, refetch } = useCustomers(currentPage, pageSize, searchTerm || undefined);
+  const { create: createCustomer, loading: createLoading } = useCreateCustomer();
+  const { update: updateCustomer, loading: updateLoading } = useUpdateCustomer();
+  const { remove: deleteCustomer } = useDeleteCustomer();
+
+  const customers = customersData?.customers || [];
+  const totalPages = customersData ? Math.ceil(customersData.total / pageSize) : 1;
 
   useEffect(() => {
-    fetchCustomers();
-  }, [fetchCustomers]);
+    refetch();
+  }, [currentPage, searchTerm, refetch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (editingCustomer) {
-        await customerApi.update(editingCustomer.CustomerId, formData);
+        await updateCustomer(editingCustomer.CustomerId, formData);
       } else {
-        await customerApi.create(formData);
+        await createCustomer(formData);
       }
       setIsModalOpen(false);
       setEditingCustomer(null);
       resetForm();
-      fetchCustomers();
+      refetch();
     } catch (err) {
-      setError('Failed to save customer');
-      console.error(err);
+      console.error('Failed to save customer:', err);
     }
   };
 
@@ -84,11 +79,10 @@ export default function Customers() {
   const handleDelete = async (customer: Customer) => {
     if (window.confirm(`Are you sure you want to delete ${customer.CompanyName}?`)) {
       try {
-        await customerApi.delete(customer.CustomerId);
-        fetchCustomers();
+        await deleteCustomer(customer.CustomerId);
+        refetch();
       } catch (err) {
-        setError('Failed to delete customer');
-        console.error(err);
+        console.error('Failed to delete customer:', err);
       }
     }
   };
@@ -152,7 +146,7 @@ export default function Customers() {
 
       {error && (
         <div className="mt-4 rounded-md bg-red-50 p-4">
-          <div className="text-sm text-red-700">{error}</div>
+          <div className="text-sm text-red-700">{error.message || 'An error occurred'}</div>
         </div>
       )}
 
@@ -364,9 +358,10 @@ export default function Customers() {
             </button>
             <button
               type="submit"
-              className="rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              disabled={createLoading || updateLoading}
+              className="rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
             >
-              {editingCustomer ? 'Update' : 'Create'}
+              {createLoading || updateLoading ? 'Saving...' : (editingCustomer ? 'Update' : 'Create')}
             </button>
           </div>
         </form>
