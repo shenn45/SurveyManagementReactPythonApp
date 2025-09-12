@@ -43,7 +43,7 @@ export const useCustomers = (page = 1, size = 100, search?: string) => {
   });
 
   return {
-    data: data?.customers as CustomerListResponse | undefined,
+    data: (data as any)?.customers as CustomerListResponse | undefined,
     loading,
     error,
     refetch,
@@ -57,7 +57,7 @@ export const useCustomer = (customerId: number) => {
   });
 
   return {
-    data: data?.customer as Customer | undefined,
+    data: (data as any)?.customer as Customer | undefined,
     loading,
     error,
   };
@@ -120,7 +120,7 @@ export const useSurveys = (page = 1, size = 100, search?: string) => {
   });
 
   return {
-    data: data?.surveys as SurveyListResponse | undefined,
+    data: (data as any)?.surveys as SurveyListResponse | undefined,
     loading,
     error,
     refetch,
@@ -134,7 +134,7 @@ export const useSurvey = (surveyId: number) => {
   });
 
   return {
-    data: data?.survey as Survey | undefined,
+    data: (data as any)?.survey as Survey | undefined,
     loading,
     error,
   };
@@ -150,7 +150,7 @@ export const useCreateSurvey = () => {
       },
       refetchQueries: [GET_SURVEYS],
     });
-    return result.data.createSurvey;
+    return (result.data as any).createSurvey;
   };
 
   return { create, loading, error };
@@ -167,7 +167,7 @@ export const useUpdateSurvey = () => {
       },
       refetchQueries: [GET_SURVEYS, GET_SURVEY],
     });
-    return result.data.updateSurvey;
+    return (result.data as any).updateSurvey;
   };
 
   return { update, loading, error };
@@ -183,7 +183,7 @@ export const useDeleteSurvey = () => {
       },
       refetchQueries: [GET_SURVEYS],
     });
-    return result.data.deleteSurvey;
+    return (result.data as any).deleteSurvey;
   };
 
   return { remove, loading, error };
@@ -197,7 +197,7 @@ export const useProperties = (page = 1, size = 100, search?: string) => {
   });
 
   return {
-    data: data?.properties as PropertyListResponse | undefined,
+    data: (data as any)?.properties as PropertyListResponse | undefined,
     loading,
     error,
     refetch,
@@ -211,7 +211,7 @@ export const useProperty = (propertyId: number) => {
   });
 
   return {
-    data: data?.property as Property | undefined,
+    data: (data as any)?.property as Property | undefined,
     loading,
     error,
   };
@@ -227,7 +227,7 @@ export const useCreateProperty = () => {
       },
       refetchQueries: [GET_PROPERTIES],
     });
-    return result.data.createProperty;
+    return (result.data as any).createProperty;
   };
 
   return { create, loading, error };
@@ -244,7 +244,7 @@ export const useUpdateProperty = () => {
       },
       refetchQueries: [GET_PROPERTIES, GET_PROPERTY],
     });
-    return result.data.updateProperty;
+    return (result.data as any).updateProperty;
   };
 
   return { update, loading, error };
@@ -260,7 +260,7 @@ export const useDeleteProperty = () => {
       },
       refetchQueries: [GET_PROPERTIES],
     });
-    return result.data.deleteProperty;
+    return (result.data as any).deleteProperty;
   };
 
   return { remove, loading, error };
@@ -271,7 +271,7 @@ export const useSurveyTypes = () => {
   const { data, loading, error } = useQuery(GET_SURVEY_TYPES);
 
   return {
-    data: data?.surveyTypes as SurveyType[] | undefined,
+    data: (data as any)?.surveyTypes as SurveyType[] | undefined,
     loading,
     error,
   };
@@ -281,7 +281,7 @@ export const useSurveyStatuses = () => {
   const { data, loading, error } = useQuery(GET_SURVEY_STATUSES);
 
   return {
-    data: data?.surveyStatuses as SurveyStatus[] | undefined,
+    data: (data as any)?.surveyStatuses as SurveyStatus[] | undefined,
     loading,
     error,
   };
@@ -291,7 +291,7 @@ export const useTownships = () => {
   const { data, loading, error } = useQuery(GET_TOWNSHIPS);
 
   return {
-    data: data?.townships as Township[] | undefined,
+    data: (data as any)?.townships as Township[] | undefined,
     loading,
     error,
   };
