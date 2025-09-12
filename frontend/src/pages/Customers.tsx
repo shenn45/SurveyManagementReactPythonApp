@@ -1,14 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from '../hooks/useGraphQLApi';
+import { customerApi } from '../api';
 import { Customer, CustomerCreate } from '../types';
 import Modal from '../components/Modal';
 import SearchBar from '../components/SearchBar';
 import Pagination from '../components/Pagination';
 
 export default function Customers() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState<CustomerCreate>({
@@ -25,29 +29,39 @@ export default function Customers() {
 
   const pageSize = 20;
 
-  // GraphQL hooks
-  const { data: customersData, loading, error, refetch } = useCustomers(currentPage, pageSize, searchTerm || undefined);
-  const { create: createCustomer, loading: createLoading } = useCreateCustomer();
-  const { update: updateCustomer, loading: updateLoading } = useUpdateCustomer();
-  const { remove: deleteCustomer, loading: deleteLoading } = useDeleteCustomer();
+  const fetchCustomers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await customerApi.getAll(currentPage, pageSize, searchTerm || undefined);
+      setCustomers(response.customers);
+      setTotalPages(Math.ceil(response.total / pageSize));
+    } catch (err) {
+      setError('Failed to fetch customers');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, searchTerm]);
 
-  const customers = customersData?.customers || [];
-  const totalPages = customersData ? Math.ceil(customersData.total / pageSize) : 1;
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (editingCustomer) {
-        await updateCustomer(editingCustomer.CustomerId, formData);
+        await customerApi.update(editingCustomer.CustomerId, formData);
       } else {
-        await createCustomer(formData);
+        await customerApi.create(formData);
       }
       setIsModalOpen(false);
       setEditingCustomer(null);
       resetForm();
-      refetch();
+      fetchCustomers();
     } catch (err) {
-      console.error('Failed to save customer:', err);
+      setError('Failed to save customer');
+      console.error(err);
     }
   };
 
@@ -70,10 +84,11 @@ export default function Customers() {
   const handleDelete = async (customer: Customer) => {
     if (window.confirm(`Are you sure you want to delete ${customer.CompanyName}?`)) {
       try {
-        await deleteCustomer(customer.CustomerId);
-        refetch();
+        await customerApi.delete(customer.CustomerId);
+        fetchCustomers();
       } catch (err) {
-        console.error('Failed to delete customer:', err);
+        setError('Failed to delete customer');
+        console.error(err);
       }
     }
   };
@@ -137,7 +152,7 @@ export default function Customers() {
 
       {error && (
         <div className="mt-4 rounded-md bg-red-50 p-4">
-          <div className="text-sm text-red-700">{error.message || 'An error occurred'}</div>
+          <div className="text-sm text-red-700">{error}</div>
         </div>
       )}
 

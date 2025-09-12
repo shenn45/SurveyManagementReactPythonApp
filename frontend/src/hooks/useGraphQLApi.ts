@@ -73,7 +73,7 @@ export const useCreateCustomer = () => {
       },
       refetchQueries: [GET_CUSTOMERS],
     });
-    return result.data.createCustomer;
+    return (result.data as any).createCustomer;
   };
 
   return { create, loading, error };
@@ -90,7 +90,7 @@ export const useUpdateCustomer = () => {
       },
       refetchQueries: [GET_CUSTOMERS, GET_CUSTOMER],
     });
-    return result.data.updateCustomer;
+    return (result.data as any).updateCustomer;
   };
 
   return { update, loading, error };
@@ -106,7 +106,7 @@ export const useDeleteCustomer = () => {
       },
       refetchQueries: [GET_CUSTOMERS],
     });
-    return result.data.deleteCustomer;
+    return (result.data as any).deleteCustomer;
   };
 
   return { remove, loading, error };
