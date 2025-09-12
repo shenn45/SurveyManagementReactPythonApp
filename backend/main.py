@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from strawberry.fastapi import GraphQLRouter
 from routers import customers, surveys, properties, lookup
+from graphql_schema import schema
 
 app = FastAPI(
     title="Survey Management API",
@@ -17,7 +19,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
+# GraphQL endpoint
+graphql_app = GraphQLRouter(schema)
+app.include_router(graphql_app, prefix="/graphql")
+
+# Include REST API routers
 app.include_router(customers.router, prefix="/api")
 app.include_router(surveys.router, prefix="/api")
 app.include_router(properties.router, prefix="/api")

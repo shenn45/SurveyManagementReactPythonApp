@@ -1,5 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ApolloProvider } from '@apollo/client/react';
+import client from './apollo/client';
 import Sidebar from './components/Sidebar';
 import Customers from './pages/Customers';
 
@@ -88,19 +90,21 @@ function Properties() {
 
 function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-100 flex">
-        <Sidebar />
-        <main className="flex-1">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/surveys" element={<Surveys />} />
-            <Route path="/customers" element={<Customers />} />
-            <Route path="/properties" element={<Properties />} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+    <ApolloProvider client={client}>
+      <Router>
+        <div className="min-h-screen bg-gray-100 flex">
+          <Sidebar />
+          <main className="flex-1">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/surveys" element={<Surveys />} />
+              <Route path="/customers" element={<Customers />} />
+              <Route path="/properties" element={<Properties />} />
+            </Routes>
+          </main>
+        </div>
+      </Router>
+    </ApolloProvider>
   );
 }
 
