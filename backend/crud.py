@@ -62,6 +62,47 @@ def get_customers(skip: int = 0, limit: int = 100, search: Optional[str] = None)
     """Get customers with pagination and optional search"""
     table = get_table('Customers')
     
+    # Handle when DynamoDB is not available
+    if table is None:
+        print("Using mock customer data")
+        mock_customers = [
+            Customer(
+                CustomerId="mock-customer-1",
+                CustomerCode="MOCK001",
+                CompanyName="Mock Company 1",
+                ContactFirstName="John",
+                ContactLastName="Doe",
+                Email="john@mockcompany1.com",
+                Phone="555-0001",
+                IsActive=True
+            ),
+            Customer(
+                CustomerId="mock-customer-2", 
+                CustomerCode="MOCK002",
+                CompanyName="Mock Company 2",
+                ContactFirstName="Jane",
+                ContactLastName="Smith",
+                Email="jane@mockcompany2.com",
+                Phone="555-0002",
+                IsActive=True
+            )
+        ]
+        
+        # Apply search filter if provided
+        if search:
+            filtered_customers = [
+                c for c in mock_customers 
+                if search.lower() in c.CompanyName.lower() or 
+                   search.lower() in c.CustomerCode.lower() or
+                   search.lower() in c.Email.lower()
+            ]
+        else:
+            filtered_customers = mock_customers
+            
+        total = len(filtered_customers)
+        paginated_customers = filtered_customers[skip:skip + limit]
+        return paginated_customers, total
+    
     try:
         if search:
             filter_expression = Attr('CompanyName').contains(search) | \
@@ -94,6 +135,11 @@ def create_customer(customer: schemas.CustomerCreate) -> Optional[Customer]:
     customer_data['CustomerId'] = str(uuid.uuid4())
     customer_data['CreatedDate'] = datetime.utcnow()
     customer_data['ModifiedDate'] = datetime.utcnow()
+    
+    # Handle when DynamoDB is not available
+    if table is None:
+        print(f"Mock: Creating customer {customer_data['CompanyName']}")
+        return Customer(**customer_data)
     
     try:
         serialized_data = serialize_item(customer_data)
@@ -172,6 +218,42 @@ def get_surveys(skip: int = 0, limit: int = 100, search: Optional[str] = None) -
     """Get surveys with pagination and optional search"""
     table = get_table('Surveys')
     
+    # Handle when DynamoDB is not available
+    if table is None:
+        print("Using mock survey data")
+        mock_surveys = [
+            Survey(
+                SurveyId="mock-survey-1",
+                SurveyNumber="SURV001",
+                CustomerId="mock-customer-1",
+                PropertyId="mock-property-1",
+                SurveyDate=datetime.utcnow().date(),
+                Notes="Mock survey for testing"
+            ),
+            Survey(
+                SurveyId="mock-survey-2",
+                SurveyNumber="SURV002", 
+                CustomerId="mock-customer-2",
+                PropertyId="mock-property-2",
+                SurveyDate=datetime.utcnow().date(),
+                Notes="Another mock survey"
+            )
+        ]
+        
+        # Apply search filter if provided
+        if search:
+            filtered_surveys = [
+                s for s in mock_surveys 
+                if search.lower() in s.SurveyNumber.lower() or 
+                   search.lower() in s.Notes.lower()
+            ]
+        else:
+            filtered_surveys = mock_surveys
+            
+        total = len(filtered_surveys)
+        paginated_surveys = filtered_surveys[skip:skip + limit]
+        return paginated_surveys, total
+    
     try:
         if search:
             filter_expression = Attr('SurveyNumber').contains(search) | \
@@ -230,6 +312,49 @@ def get_property(property_id: str) -> Optional[Property]:
 def get_properties(skip: int = 0, limit: int = 100, search: Optional[str] = None) -> tuple[List[Property], int]:
     """Get properties with pagination and optional search"""
     table = get_table('Properties')
+    
+    # Handle when DynamoDB is not available
+    if table is None:
+        print("Using mock property data")
+        mock_properties = [
+            Property(
+                PropertyId="mock-property-1",
+                PropertyCode="PROP001",
+                PropertyName="Mock Property 1",
+                Address="123 Main St",
+                City="Springfield",
+                State="IL",
+                PostalCode="62701",
+                OwnerName="John Owner",
+                IsActive=True
+            ),
+            Property(
+                PropertyId="mock-property-2",
+                PropertyCode="PROP002",
+                PropertyName="Mock Property 2", 
+                Address="456 Oak Ave",
+                City="Springfield",
+                State="IL",
+                PostalCode="62702",
+                OwnerName="Jane Owner",
+                IsActive=True
+            )
+        ]
+        
+        # Apply search filter if provided
+        if search:
+            filtered_properties = [
+                p for p in mock_properties 
+                if search.lower() in p.PropertyName.lower() or 
+                   search.lower() in p.PropertyCode.lower() or
+                   search.lower() in p.OwnerName.lower()
+            ]
+        else:
+            filtered_properties = mock_properties
+            
+        total = len(filtered_properties)
+        paginated_properties = filtered_properties[skip:skip + limit]
+        return paginated_properties, total
     
     try:
         if search:

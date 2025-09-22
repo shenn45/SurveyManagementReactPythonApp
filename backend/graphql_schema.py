@@ -337,62 +337,35 @@ class Query(ObjectType):
             page=skip // limit + 1,
             size=limit
         )
-        finally:
-            db.close()
 
     def resolve_survey(self, info, survey_id):
-        db = get_db_session()
-        try:
-            survey_data = crud.get_survey(db, survey_id=survey_id)
-            return model_to_survey(survey_data) if survey_data else None
-        finally:
-            db.close()
+        survey_data = crud.get_survey(survey_id=survey_id)
+        return model_to_survey(survey_data) if survey_data else None
 
     def resolve_properties(self, info, skip=0, limit=100, search=None):
-        db = get_db_session()
-        try:
-            properties_data, total = crud.get_properties(db, skip=skip, limit=limit, search=search)
-            properties = [model_to_property(p) for p in properties_data]
-            return PropertyListResponse(
-                properties=properties,
-                total=total,
-                page=skip // limit + 1,
-                size=limit
-            )
-        finally:
-            db.close()
+        properties_data, total = crud.get_properties(skip=skip, limit=limit, search=search)
+        properties = [model_to_property(p) for p in properties_data]
+        return PropertyListResponse(
+            properties=properties,
+            total=total,
+            page=skip // limit + 1,
+            size=limit
+        )
 
     def resolve_property(self, info, property_id):
-        db = get_db_session()
-        try:
-            property_data = crud.get_property(db, property_id=property_id)
-            return model_to_property(property_data) if property_data else None
-        finally:
-            db.close()
-
+        property_data = crud.get_property(property_id=property_id)
+        return model_to_property(property_data) if property_data else None
     def resolve_survey_types(self, info):
-        db = get_db_session()
-        try:
-            survey_types_data = crud.get_survey_types(db)
-            return [model_to_survey_type(st) for st in survey_types_data]
-        finally:
-            db.close()
+        survey_types_data = crud.get_survey_types()
+        return [model_to_survey_type(st) for st in survey_types_data]
 
     def resolve_survey_statuses(self, info):
-        db = get_db_session()
-        try:
-            survey_statuses_data = crud.get_survey_statuses(db)
-            return [model_to_survey_status(ss) for ss in survey_statuses_data]
-        finally:
-            db.close()
+        survey_statuses_data = crud.get_survey_statuses()
+        return [model_to_survey_status(ss) for ss in survey_statuses_data]
 
     def resolve_townships(self, info):
-        db = get_db_session()
-        try:
-            townships_data = crud.get_townships(db)
-            return [model_to_township(t) for t in townships_data]
-        finally:
-            db.close()
+        # TODO: Implement get_townships in crud.py
+        return []
 
 
 class CreateCustomer(graphene.Mutation):
@@ -402,14 +375,10 @@ class CreateCustomer(graphene.Mutation):
     customer = Field(CustomerType)
 
     def mutate(self, info, input):
-        db = get_db_session()
-        try:
-            from schemas import CustomerCreate
-            customer_data = CustomerCreate(**input)
-            customer = crud.create_customer(db=db, customer=customer_data)
-            return CreateCustomer(customer=model_to_customer(customer))
-        finally:
-            db.close()
+        from schemas import CustomerCreate
+        customer_data = CustomerCreate(**input)
+        customer = crud.create_customer(customer=customer_data)
+        return CreateCustomer(customer=model_to_customer(customer))
 
 
 class UpdateCustomer(graphene.Mutation):

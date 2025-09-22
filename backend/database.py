@@ -26,18 +26,39 @@ class DynamoDBConnection:
             self._initialize_connection()
     
     def _initialize_connection(self):
-        session = boto3.Session(
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-            region_name=AWS_REGION
-        )
-        
-        if DYNAMODB_ENDPOINT_URL:
-            # For local development (DynamoDB Local)
-            self._dynamodb = session.resource('dynamodb', endpoint_url=DYNAMODB_ENDPOINT_URL)
-        else:
-            # For AWS DynamoDB
-            self._dynamodb = session.resource('dynamodb')
+        try:
+            # Use environment variables or defaults for local development
+            access_key = AWS_ACCESS_KEY_ID or "fake_access_key"
+            secret_key = AWS_SECRET_ACCESS_KEY or "fake_secret_key"
+            
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                region_name=AWS_REGION
+            )
+            
+            if DYNAMODB_ENDPOINT_URL:
+                # Try to connect to local DynamoDB
+                self._dynamodb = session.resource('dynamodb', endpoint_url=DYNAMODB_ENDPOINT_URL)
+                print(f"Attempting to connect to local DynamoDB at {DYNAMODB_ENDPOINT_URL}")
+                
+                # Test the connection by trying to list tables
+                try:
+                    list(self._dynamodb.tables.all())
+                    print("✅ Successfully connected to local DynamoDB")
+                except Exception as conn_error:
+                    print(f"❌ Failed to connect to local DynamoDB: {conn_error}")
+                    print("💡 Using development mode with mock data instead")
+                    self._dynamodb = None
+            else:
+                # Use AWS DynamoDB
+                self._dynamodb = session.resource('dynamodb')
+                print("Connecting to AWS DynamoDB")
+                
+        except Exception as e:
+            print(f"Warning: Could not connect to DynamoDB: {e}")
+            print("Using development mode with mock data")
+            self._dynamodb = None
     
     @property
     def dynamodb(self):
@@ -53,4 +74,7 @@ def get_dynamodb():
 def get_table(table_name: str):
     """Get a specific DynamoDB table"""
     dynamodb = get_dynamodb()
+    if dynamodb is None:
+        print(f"Warning: DynamoDB not available, using mock data for table {table_name}")
+        return None
     return dynamodb.Table(table_name)
