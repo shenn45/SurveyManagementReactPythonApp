@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from strawberry.fastapi import GraphQLRouter
+from starlette_graphene3 import GraphQLApp, make_graphiql_handler
 from routers import customers, surveys, properties, lookup
 from graphql_schema import schema
 
@@ -20,8 +20,8 @@ app.add_middleware(
 )
 
 # GraphQL endpoint
-graphql_app = GraphQLRouter(schema)
-app.include_router(graphql_app, prefix="/graphql")
+graphql_app = GraphQLApp(schema=schema, on_get=make_graphiql_handler())
+app.mount("/graphql", graphql_app)
 
 # Include REST API routers
 app.include_router(customers.router, prefix="/api")

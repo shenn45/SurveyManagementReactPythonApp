@@ -9,4 +9,6 @@ fastapi-cors==0.0.2
 alembic==1.13.1
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-strawberry-graphql[fastapi]==0.235.2
+graphene==3.3
+graphql-core==3.2.3
+starlette-graphene3==0.6.0

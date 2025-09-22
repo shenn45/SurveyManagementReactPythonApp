@@ -1,215 +1,10 @@
-import strawberry
-from strawberry.fastapi import GraphQLRouter
-from typing import List, Optional
+import graphene
+from graphene import ObjectType, List, Field, String, Int, Boolean, Float, DateTime, InputObjectType
+from typing import Optional
 from datetime import datetime
-from decimal import Decimal
 
 import crud
 from database import get_db
-from sqlalchemy.orm import Session
-
-
-# GraphQL Types
-@strawberry.type
-class Customer:
-    CustomerId: int
-    CustomerCode: str
-    CompanyName: str
-    ContactFirstName: Optional[str] = None
-    ContactLastName: Optional[str] = None
-    Email: Optional[str] = None
-    Phone: Optional[str] = None
-    Fax: Optional[str] = None
-    Website: Optional[str] = None
-    IsActive: bool
-    CreatedDate: datetime
-    ModifiedDate: datetime
-    CreatedBy: Optional[str] = None
-    ModifiedBy: Optional[str] = None
-
-@strawberry.type
-class Survey:
-    SurveyId: int
-    SurveyNumber: str
-    CustomerId: Optional[int] = None
-    PropertyId: Optional[int] = None
-    SurveyTypeId: Optional[int] = None
-    StatusId: int
-    Title: Optional[str] = None
-    Description: Optional[str] = None
-    PurposeCode: Optional[str] = None
-    RequestDate: Optional[datetime] = None
-    ScheduledDate: Optional[datetime] = None
-    CompletedDate: Optional[datetime] = None
-    DeliveryDate: Optional[datetime] = None
-    DueDate: Optional[datetime] = None
-    QuotedPrice: Optional[float] = None
-    FinalPrice: Optional[float] = None
-    IsFieldworkComplete: bool
-    IsDrawingComplete: bool
-    IsScanned: bool
-    IsDelivered: bool
-    CreatedDate: datetime
-    ModifiedDate: datetime
-    CreatedBy: Optional[str] = None
-    ModifiedBy: Optional[str] = None
-
-@strawberry.type
-class Property:
-    PropertyId: int
-    SurveyPrimaryKey: int
-    LegacyTax: Optional[str] = None
-    District: Optional[str] = None
-    Section: Optional[str] = None
-    Block: Optional[str] = None
-    Lot: Optional[str] = None
-    AddressId: Optional[int] = None
-    TownshipId: Optional[int] = None
-    PropertyType: Optional[str] = None
-    CreatedDate: datetime
-    ModifiedDate: datetime
-
-@strawberry.type
-class SurveyType:
-    SurveyTypeId: int
-    TypeName: str
-    TypeDescription: Optional[str] = None
-    EstimatedDuration: Optional[int] = None
-    BasePrice: Optional[float] = None
-    IsActive: bool
-
-@strawberry.type
-class SurveyStatus:
-    StatusId: int
-    StatusCode: str
-    StatusName: str
-    SortOrder: int
-    IsActive: bool
-
-@strawberry.type
-class Township:
-    TownshipId: int
-    Name: str
-    FoilMethod: Optional[str] = None
-    Website: Optional[str] = None
-    Description: Optional[str] = None
-
-
-# Response Types for Pagination
-@strawberry.type
-class CustomerListResponse:
-    customers: List[Customer]
-    total: int
-    page: int
-    size: int
-
-@strawberry.type
-class SurveyListResponse:
-    surveys: List[Survey]
-    total: int
-    page: int
-    size: int
-
-@strawberry.type
-class PropertyListResponse:
-    properties: List[Property]
-    total: int
-    page: int
-    size: int
-
-
-# Input Types for Mutations
-@strawberry.input
-class CustomerInput:
-    CustomerCode: str
-    CompanyName: str
-    ContactFirstName: Optional[str] = None
-    ContactLastName: Optional[str] = None
-    Email: Optional[str] = None
-    Phone: Optional[str] = None
-    Fax: Optional[str] = None
-    Website: Optional[str] = None
-    IsActive: bool = True
-
-@strawberry.input
-class CustomerUpdateInput:
-    CustomerCode: Optional[str] = None
-    CompanyName: Optional[str] = None
-    ContactFirstName: Optional[str] = None
-    ContactLastName: Optional[str] = None
-    Email: Optional[str] = None
-    Phone: Optional[str] = None
-    Fax: Optional[str] = None
-    Website: Optional[str] = None
-    IsActive: Optional[bool] = None
-
-@strawberry.input
-class SurveyInput:
-    SurveyNumber: str
-    CustomerId: Optional[int] = None
-    PropertyId: Optional[int] = None
-    SurveyTypeId: Optional[int] = None
-    StatusId: int
-    Title: Optional[str] = None
-    Description: Optional[str] = None
-    PurposeCode: Optional[str] = None
-    RequestDate: Optional[datetime] = None
-    ScheduledDate: Optional[datetime] = None
-    CompletedDate: Optional[datetime] = None
-    DeliveryDate: Optional[datetime] = None
-    DueDate: Optional[datetime] = None
-    QuotedPrice: Optional[float] = None
-    FinalPrice: Optional[float] = None
-    IsFieldworkComplete: bool = False
-    IsDrawingComplete: bool = False
-    IsScanned: bool = False
-    IsDelivered: bool = False
-
-@strawberry.input
-class SurveyUpdateInput:
-    SurveyNumber: Optional[str] = None
-    CustomerId: Optional[int] = None
-    PropertyId: Optional[int] = None
-    SurveyTypeId: Optional[int] = None
-    StatusId: Optional[int] = None
-    Title: Optional[str] = None
-    Description: Optional[str] = None
-    PurposeCode: Optional[str] = None
-    RequestDate: Optional[datetime] = None
-    ScheduledDate: Optional[datetime] = None
-    CompletedDate: Optional[datetime] = None
-    DeliveryDate: Optional[datetime] = None
-    DueDate: Optional[datetime] = None
-    QuotedPrice: Optional[float] = None
-    FinalPrice: Optional[float] = None
-    IsFieldworkComplete: Optional[bool] = None
-    IsDrawingComplete: Optional[bool] = None
-    IsScanned: Optional[bool] = None
-    IsDelivered: Optional[bool] = None
-
-@strawberry.input
-class PropertyInput:
-    SurveyPrimaryKey: int
-    LegacyTax: Optional[str] = None
-    District: Optional[str] = None
-    Section: Optional[str] = None
-    Block: Optional[str] = None
-    Lot: Optional[str] = None
-    AddressId: Optional[int] = None
-    TownshipId: Optional[int] = None
-    PropertyType: Optional[str] = None
-
-@strawberry.input
-class PropertyUpdateInput:
-    SurveyPrimaryKey: Optional[int] = None
-    LegacyTax: Optional[str] = None
-    District: Optional[str] = None
-    Section: Optional[str] = None
-    Block: Optional[str] = None
-    Lot: Optional[str] = None
-    AddressId: Optional[int] = None
-    TownshipId: Optional[int] = None
-    PropertyType: Optional[str] = None
 
 
 # Utility function to get database session
@@ -217,9 +12,209 @@ def get_db_session():
     return next(get_db())
 
 
+# GraphQL Types
+class CustomerType(ObjectType):
+    CustomerId = Int()
+    CustomerCode = String()
+    CompanyName = String()
+    ContactFirstName = String()
+    ContactLastName = String()
+    Email = String()
+    Phone = String()
+    Fax = String()
+    Website = String()
+    IsActive = Boolean()
+    CreatedDate = DateTime()
+    ModifiedDate = DateTime()
+    CreatedBy = String()
+    ModifiedBy = String()
+
+
+class SurveyType(ObjectType):
+    SurveyId = Int()
+    SurveyNumber = String()
+    CustomerId = Int()
+    PropertyId = Int()
+    SurveyTypeId = Int()
+    StatusId = Int()
+    Title = String()
+    Description = String()
+    PurposeCode = String()
+    RequestDate = DateTime()
+    ScheduledDate = DateTime()
+    CompletedDate = DateTime()
+    DeliveryDate = DateTime()
+    DueDate = DateTime()
+    QuotedPrice = Float()
+    FinalPrice = Float()
+    IsFieldworkComplete = Boolean()
+    IsDrawingComplete = Boolean()
+    IsScanned = Boolean()
+    IsDelivered = Boolean()
+    CreatedDate = DateTime()
+    ModifiedDate = DateTime()
+    CreatedBy = String()
+    ModifiedBy = String()
+
+
+class PropertyType(ObjectType):
+    PropertyId = Int()
+    SurveyPrimaryKey = Int()
+    LegacyTax = String()
+    District = String()
+    Section = String()
+    Block = String()
+    Lot = String()
+    AddressId = Int()
+    TownshipId = Int()
+    PropertyType_field = String()
+    CreatedDate = DateTime()
+    ModifiedDate = DateTime()
+
+
+class SurveyTypeClass(ObjectType):
+    SurveyTypeId = Int()
+    TypeName = String()
+    TypeDescription = String()
+    EstimatedDuration = Int()
+    BasePrice = Float()
+    IsActive = Boolean()
+
+
+class SurveyStatusType(ObjectType):
+    StatusId = Int()
+    StatusCode = String()
+    StatusName = String()
+    SortOrder = Int()
+    IsActive = Boolean()
+
+
+class TownshipType(ObjectType):
+    TownshipId = Int()
+    Name = String()
+    FoilMethod = String()
+    Website = String()
+    Description = String()
+
+
+# Response Types for Pagination
+class CustomerListResponse(ObjectType):
+    customers = List(CustomerType)
+    total = Int()
+    page = Int()
+    size = Int()
+
+
+class SurveyListResponse(ObjectType):
+    surveys = List(SurveyType)
+    total = Int()
+    page = Int()
+    size = Int()
+
+
+class PropertyListResponse(ObjectType):
+    properties = List(PropertyType)
+    total = Int()
+    page = Int()
+    size = Int()
+
+
+# Input Types for Mutations
+class CustomerInput(InputObjectType):
+    CustomerCode = String(required=True)
+    CompanyName = String(required=True)
+    ContactFirstName = String()
+    ContactLastName = String()
+    Email = String()
+    Phone = String()
+    Fax = String()
+    Website = String()
+    IsActive = Boolean(default_value=True)
+
+
+class CustomerUpdateInput(InputObjectType):
+    CustomerCode = String()
+    CompanyName = String()
+    ContactFirstName = String()
+    ContactLastName = String()
+    Email = String()
+    Phone = String()
+    Fax = String()
+    Website = String()
+    IsActive = Boolean()
+
+
+class SurveyInput(InputObjectType):
+    SurveyNumber = String(required=True)
+    CustomerId = Int()
+    PropertyId = Int()
+    SurveyTypeId = Int()
+    StatusId = Int(required=True)
+    Title = String()
+    Description = String()
+    PurposeCode = String()
+    RequestDate = DateTime()
+    ScheduledDate = DateTime()
+    CompletedDate = DateTime()
+    DeliveryDate = DateTime()
+    DueDate = DateTime()
+    QuotedPrice = Float()
+    FinalPrice = Float()
+    IsFieldworkComplete = Boolean(default_value=False)
+    IsDrawingComplete = Boolean(default_value=False)
+    IsScanned = Boolean(default_value=False)
+    IsDelivered = Boolean(default_value=False)
+
+
+class SurveyUpdateInput(InputObjectType):
+    SurveyNumber = String()
+    CustomerId = Int()
+    PropertyId = Int()
+    SurveyTypeId = Int()
+    StatusId = Int()
+    Title = String()
+    Description = String()
+    PurposeCode = String()
+    RequestDate = DateTime()
+    ScheduledDate = DateTime()
+    CompletedDate = DateTime()
+    DeliveryDate = DateTime()
+    DueDate = DateTime()
+    QuotedPrice = Float()
+    FinalPrice = Float()
+    IsFieldworkComplete = Boolean()
+    IsDrawingComplete = Boolean()
+    IsScanned = Boolean()
+    IsDelivered = Boolean()
+
+
+class PropertyInput(InputObjectType):
+    SurveyPrimaryKey = Int(required=True)
+    LegacyTax = String()
+    District = String()
+    Section = String()
+    Block = String()
+    Lot = String()
+    AddressId = Int()
+    TownshipId = Int()
+    PropertyType_field = String()
+
+
+class PropertyUpdateInput(InputObjectType):
+    SurveyPrimaryKey = Int()
+    LegacyTax = String()
+    District = String()
+    Section = String()
+    Block = String()
+    Lot = String()
+    AddressId = Int()
+    TownshipId = Int()
+    PropertyType_field = String()
+
+
 # Convert model to GraphQL type
-def model_to_customer(customer_model) -> Customer:
-    return Customer(
+def model_to_customer(customer_model):
+    return CustomerType(
         CustomerId=customer_model.CustomerId,
         CustomerCode=customer_model.CustomerCode,
         CompanyName=customer_model.CompanyName,
@@ -236,8 +231,9 @@ def model_to_customer(customer_model) -> Customer:
         ModifiedBy=customer_model.ModifiedBy
     )
 
-def model_to_survey(survey_model) -> Survey:
-    return Survey(
+
+def model_to_survey(survey_model):
+    return SurveyType(
         SurveyId=survey_model.SurveyId,
         SurveyNumber=survey_model.SurveyNumber,
         CustomerId=survey_model.CustomerId,
@@ -264,8 +260,9 @@ def model_to_survey(survey_model) -> Survey:
         ModifiedBy=survey_model.ModifiedBy
     )
 
-def model_to_property(property_model) -> Property:
-    return Property(
+
+def model_to_property(property_model):
+    return PropertyType(
         PropertyId=property_model.PropertyId,
         SurveyPrimaryKey=property_model.SurveyPrimaryKey,
         LegacyTax=property_model.LegacyTax,
@@ -275,13 +272,14 @@ def model_to_property(property_model) -> Property:
         Lot=property_model.Lot,
         AddressId=property_model.AddressId,
         TownshipId=property_model.TownshipId,
-        PropertyType=property_model.PropertyType,
+        PropertyType_field=property_model.PropertyType,
         CreatedDate=property_model.CreatedDate,
         ModifiedDate=property_model.ModifiedDate
     )
 
-def model_to_survey_type(survey_type_model) -> SurveyType:
-    return SurveyType(
+
+def model_to_survey_type(survey_type_model):
+    return SurveyTypeClass(
         SurveyTypeId=survey_type_model.SurveyTypeId,
         TypeName=survey_type_model.TypeName,
         TypeDescription=survey_type_model.TypeDescription,
@@ -290,8 +288,9 @@ def model_to_survey_type(survey_type_model) -> SurveyType:
         IsActive=survey_type_model.IsActive
     )
 
-def model_to_survey_status(survey_status_model) -> SurveyStatus:
-    return SurveyStatus(
+
+def model_to_survey_status(survey_status_model):
+    return SurveyStatusType(
         StatusId=survey_status_model.StatusId,
         StatusCode=survey_status_model.StatusCode,
         StatusName=survey_status_model.StatusName,
@@ -299,8 +298,9 @@ def model_to_survey_status(survey_status_model) -> SurveyStatus:
         IsActive=survey_status_model.IsActive
     )
 
-def model_to_township(township_model) -> Township:
-    return Township(
+
+def model_to_township(township_model):
+    return TownshipType(
         TownshipId=township_model.TownshipId,
         Name=township_model.Name,
         FoilMethod=township_model.FoilMethod,
@@ -309,10 +309,18 @@ def model_to_township(township_model) -> Township:
     )
 
 
-@strawberry.type
-class Query:
-    @strawberry.field
-    def customers(self, skip: int = 0, limit: int = 100, search: Optional[str] = None) -> CustomerListResponse:
+class Query(ObjectType):
+    customers = Field(CustomerListResponse, skip=Int(default_value=0), limit=Int(default_value=100), search=String())
+    customer = Field(CustomerType, customer_id=Int(required=True))
+    surveys = Field(SurveyListResponse, skip=Int(default_value=0), limit=Int(default_value=100), search=String())
+    survey = Field(SurveyType, survey_id=Int(required=True))
+    properties = Field(PropertyListResponse, skip=Int(default_value=0), limit=Int(default_value=100), search=String())
+    property = Field(PropertyType, property_id=Int(required=True))
+    survey_types = List(SurveyTypeClass)
+    survey_statuses = List(SurveyStatusType)
+    townships = List(TownshipType)
+
+    def resolve_customers(self, info, skip=0, limit=100, search=None):
         db = get_db_session()
         try:
             customers_data, total = crud.get_customers(db, skip=skip, limit=limit, search=search)
@@ -326,8 +334,7 @@ class Query:
         finally:
             db.close()
 
-    @strawberry.field
-    def customer(self, customer_id: int) -> Optional[Customer]:
+    def resolve_customer(self, info, customer_id):
         db = get_db_session()
         try:
             customer_data = crud.get_customer(db, customer_id=customer_id)
@@ -335,8 +342,7 @@ class Query:
         finally:
             db.close()
 
-    @strawberry.field
-    def surveys(self, skip: int = 0, limit: int = 100, search: Optional[str] = None) -> SurveyListResponse:
+    def resolve_surveys(self, info, skip=0, limit=100, search=None):
         db = get_db_session()
         try:
             surveys_data, total = crud.get_surveys(db, skip=skip, limit=limit, search=search)
@@ -350,8 +356,7 @@ class Query:
         finally:
             db.close()
 
-    @strawberry.field
-    def survey(self, survey_id: int) -> Optional[Survey]:
+    def resolve_survey(self, info, survey_id):
         db = get_db_session()
         try:
             survey_data = crud.get_survey(db, survey_id=survey_id)
@@ -359,8 +364,7 @@ class Query:
         finally:
             db.close()
 
-    @strawberry.field
-    def properties(self, skip: int = 0, limit: int = 100, search: Optional[str] = None) -> PropertyListResponse:
+    def resolve_properties(self, info, skip=0, limit=100, search=None):
         db = get_db_session()
         try:
             properties_data, total = crud.get_properties(db, skip=skip, limit=limit, search=search)
@@ -374,8 +378,7 @@ class Query:
         finally:
             db.close()
 
-    @strawberry.field
-    def property(self, property_id: int) -> Optional[Property]:
+    def resolve_property(self, info, property_id):
         db = get_db_session()
         try:
             property_data = crud.get_property(db, property_id=property_id)
@@ -383,8 +386,7 @@ class Query:
         finally:
             db.close()
 
-    @strawberry.field
-    def survey_types(self) -> List[SurveyType]:
+    def resolve_survey_types(self, info):
         db = get_db_session()
         try:
             survey_types_data = crud.get_survey_types(db)
@@ -392,8 +394,7 @@ class Query:
         finally:
             db.close()
 
-    @strawberry.field
-    def survey_statuses(self) -> List[SurveyStatus]:
+    def resolve_survey_statuses(self, info):
         db = get_db_session()
         try:
             survey_statuses_data = crud.get_survey_statuses(db)
@@ -401,8 +402,7 @@ class Query:
         finally:
             db.close()
 
-    @strawberry.field
-    def townships(self) -> List[Township]:
+    def resolve_townships(self, info):
         db = get_db_session()
         try:
             townships_data = crud.get_townships(db)
@@ -411,107 +411,179 @@ class Query:
             db.close()
 
 
-@strawberry.type
-class Mutation:
-    @strawberry.field
-    def create_customer(self, input: CustomerInput) -> Customer:
+class CreateCustomer(graphene.Mutation):
+    class Arguments:
+        input = CustomerInput(required=True)
+
+    customer = Field(CustomerType)
+
+    def mutate(self, info, input):
         db = get_db_session()
         try:
             from schemas import CustomerCreate
-            customer_data = CustomerCreate(**strawberry.asdict(input))
+            customer_data = CustomerCreate(**input)
             customer = crud.create_customer(db=db, customer=customer_data)
-            return model_to_customer(customer)
+            return CreateCustomer(customer=model_to_customer(customer))
         finally:
             db.close()
 
-    @strawberry.field
-    def update_customer(self, customer_id: int, input: CustomerUpdateInput) -> Optional[Customer]:
+
+class UpdateCustomer(graphene.Mutation):
+    class Arguments:
+        customer_id = Int(required=True)
+        input = CustomerUpdateInput(required=True)
+
+    customer = Field(CustomerType)
+
+    def mutate(self, info, customer_id, input):
         db = get_db_session()
         try:
             from schemas import CustomerUpdate
             # Filter out None values
-            update_data = {k: v for k, v in strawberry.asdict(input).items() if v is not None}
+            update_data = {k: v for k, v in input.items() if v is not None}
             customer_data = CustomerUpdate(**update_data)
             customer = crud.update_customer(db=db, customer_id=customer_id, customer=customer_data)
-            return model_to_customer(customer) if customer else None
+            return UpdateCustomer(customer=model_to_customer(customer) if customer else None)
         finally:
             db.close()
 
-    @strawberry.field
-    def delete_customer(self, customer_id: int) -> bool:
+
+class DeleteCustomer(graphene.Mutation):
+    class Arguments:
+        customer_id = Int(required=True)
+
+    success = Boolean()
+
+    def mutate(self, info, customer_id):
         db = get_db_session()
         try:
             customer = crud.delete_customer(db=db, customer_id=customer_id)
-            return customer is not None
+            return DeleteCustomer(success=customer is not None)
         finally:
             db.close()
 
-    @strawberry.field
-    def create_survey(self, input: SurveyInput) -> Survey:
+
+class CreateSurvey(graphene.Mutation):
+    class Arguments:
+        input = SurveyInput(required=True)
+
+    survey = Field(SurveyType)
+
+    def mutate(self, info, input):
         db = get_db_session()
         try:
             from schemas import SurveyCreate
-            survey_data = SurveyCreate(**strawberry.asdict(input))
+            survey_data = SurveyCreate(**input)
             survey = crud.create_survey(db=db, survey=survey_data)
-            return model_to_survey(survey)
+            return CreateSurvey(survey=model_to_survey(survey))
         finally:
             db.close()
 
-    @strawberry.field
-    def update_survey(self, survey_id: int, input: SurveyUpdateInput) -> Optional[Survey]:
+
+class UpdateSurvey(graphene.Mutation):
+    class Arguments:
+        survey_id = Int(required=True)
+        input = SurveyUpdateInput(required=True)
+
+    survey = Field(SurveyType)
+
+    def mutate(self, info, survey_id, input):
         db = get_db_session()
         try:
             from schemas import SurveyUpdate
             # Filter out None values
-            update_data = {k: v for k, v in strawberry.asdict(input).items() if v is not None}
+            update_data = {k: v for k, v in input.items() if v is not None}
             survey_data = SurveyUpdate(**update_data)
             survey = crud.update_survey(db=db, survey_id=survey_id, survey=survey_data)
-            return model_to_survey(survey) if survey else None
+            return UpdateSurvey(survey=model_to_survey(survey) if survey else None)
         finally:
             db.close()
 
-    @strawberry.field
-    def delete_survey(self, survey_id: int) -> bool:
+
+class DeleteSurvey(graphene.Mutation):
+    class Arguments:
+        survey_id = Int(required=True)
+
+    success = Boolean()
+
+    def mutate(self, info, survey_id):
         db = get_db_session()
         try:
             survey = crud.delete_survey(db=db, survey_id=survey_id)
-            return survey is not None
+            return DeleteSurvey(success=survey is not None)
         finally:
             db.close()
 
-    @strawberry.field
-    def create_property(self, input: PropertyInput) -> Property:
+
+class CreateProperty(graphene.Mutation):
+    class Arguments:
+        input = PropertyInput(required=True)
+
+    property = Field(PropertyType)
+
+    def mutate(self, info, input):
         db = get_db_session()
         try:
             from schemas import PropertyCreate
-            property_data = PropertyCreate(**strawberry.asdict(input))
+            # Map PropertyType_field to PropertyType
+            input_dict = dict(input)
+            if 'PropertyType_field' in input_dict:
+                input_dict['PropertyType'] = input_dict.pop('PropertyType_field')
+            property_data = PropertyCreate(**input_dict)
             property = crud.create_property(db=db, property=property_data)
-            return model_to_property(property)
+            return CreateProperty(property=model_to_property(property))
         finally:
             db.close()
 
-    @strawberry.field
-    def update_property(self, property_id: int, input: PropertyUpdateInput) -> Optional[Property]:
+
+class UpdateProperty(graphene.Mutation):
+    class Arguments:
+        property_id = Int(required=True)
+        input = PropertyUpdateInput(required=True)
+
+    property = Field(PropertyType)
+
+    def mutate(self, info, property_id, input):
         db = get_db_session()
         try:
             from schemas import PropertyUpdate
-            # Filter out None values
-            update_data = {k: v for k, v in strawberry.asdict(input).items() if v is not None}
+            # Filter out None values and map PropertyType_field to PropertyType
+            update_data = {k: v for k, v in input.items() if v is not None}
+            if 'PropertyType_field' in update_data:
+                update_data['PropertyType'] = update_data.pop('PropertyType_field')
             property_data = PropertyUpdate(**update_data)
             property = crud.update_property(db=db, property_id=property_id, property=property_data)
-            return model_to_property(property) if property else None
+            return UpdateProperty(property=model_to_property(property) if property else None)
         finally:
             db.close()
 
-    @strawberry.field
-    def delete_property(self, property_id: int) -> bool:
+
+class DeleteProperty(graphene.Mutation):
+    class Arguments:
+        property_id = Int(required=True)
+
+    success = Boolean()
+
+    def mutate(self, info, property_id):
         db = get_db_session()
         try:
             property = crud.delete_property(db=db, property_id=property_id)
-            return property is not None
+            return DeleteProperty(success=property is not None)
         finally:
             db.close()
 
 
+class Mutation(ObjectType):
+    create_customer = CreateCustomer.Field()
+    update_customer = UpdateCustomer.Field()
+    delete_customer = DeleteCustomer.Field()
+    create_survey = CreateSurvey.Field()
+    update_survey = UpdateSurvey.Field()
+    delete_survey = DeleteSurvey.Field()
+    create_property = CreateProperty.Field()
+    update_property = UpdateProperty.Field()
+    delete_property = DeleteProperty.Field()
+
+
 # Create the GraphQL schema
-schema = strawberry.Schema(query=Query, mutation=Mutation)
+schema = graphene.Schema(query=Query, mutation=Mutation)
