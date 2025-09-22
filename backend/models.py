@@ -1,177 +1,351 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, BigInteger, Float, Numeric
-from sqlalchemy.orm import relationship
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
 from datetime import datetime
-from database import Base
+from decimal import Decimal
+import uuid
 
-class Address(Base):
-    __tablename__ = "Addresses"
-    
-    AddressId = Column(Integer, primary_key=True, index=True)
-    AddressType = Column(String(20), nullable=False)
-    AddressLine1 = Column(String(100), nullable=False)
-    AddressLine2 = Column(String(255), nullable=True)
-    City = Column(String(50), nullable=False)
-    StateCode = Column(String(2), nullable=False)
-    ZipCode = Column(String(10), nullable=False)
-    County = Column(String(100), nullable=True)
-    Country = Column(String(100), nullable=True, default="USA")
-    IsActive = Column(Boolean, nullable=False, default=True)
-    CreatedDate = Column(DateTime, nullable=False, default=datetime.utcnow)
-    
-    # Relationships
-    customer_addresses = relationship("CustomerAddress", back_populates="address")
-    properties = relationship("Property", back_populates="address")
+# DynamoDB models using Pydantic BaseModel
 
-class Customer(Base):
-    __tablename__ = "Customers"
+class Address(BaseModel):
+    AddressId: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    AddressType: str
+    AddressLine1: str
+    AddressLine2: Optional[str] = None
+    City: str
+    StateCode: str
+    ZipCode: str
+    County: Optional[str] = None
+    Country: str = "USA"
+    IsActive: bool = True
+    CreatedDate: datetime = Field(default_factory=datetime.utcnow)
     
-    CustomerId = Column(Integer, primary_key=True, index=True)
-    CustomerCode = Column(String(20), nullable=False, unique=True)
-    CompanyName = Column(String(255), nullable=False, index=True)
-    ContactFirstName = Column(String(100), nullable=True)
-    ContactLastName = Column(String(100), nullable=True)
-    Email = Column(String(255), nullable=True, index=True)
-    Phone = Column(String(20), nullable=True)
-    Fax = Column(String(20), nullable=True)
-    Website = Column(String(255), nullable=True)
-    IsActive = Column(Boolean, nullable=False, default=True)
-    CreatedDate = Column(DateTime, nullable=False, default=datetime.utcnow)
-    ModifiedDate = Column(DateTime, nullable=False, default=datetime.utcnow)
-    CreatedBy = Column(String(100), nullable=True)
-    ModifiedBy = Column(String(100), nullable=True)
-    
-    # Relationships
-    customer_addresses = relationship("CustomerAddress", back_populates="customer")
-    surveys = relationship("Survey", back_populates="customer")
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
-class CustomerAddress(Base):
-    __tablename__ = "CustomerAddresses"
+class Customer(BaseModel):
+    CustomerId: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    CustomerCode: str
+    CompanyName: str
+    ContactFirstName: Optional[str] = None
+    ContactLastName: Optional[str] = None
+    Email: Optional[str] = None
+    Phone: Optional[str] = None
+    Fax: Optional[str] = None
+    Website: Optional[str] = None
+    IsActive: bool = True
+    CreatedDate: datetime = Field(default_factory=datetime.utcnow)
+    ModifiedDate: datetime = Field(default_factory=datetime.utcnow)
+    CreatedBy: Optional[str] = None
+    ModifiedBy: Optional[str] = None
     
-    CustomerAddressId = Column(Integer, primary_key=True, index=True)
-    CustomerId = Column(Integer, ForeignKey("Customers.CustomerId"), nullable=False)
-    AddressId = Column(Integer, ForeignKey("Addresses.AddressId"), nullable=False)
-    IsPrimary = Column(Boolean, nullable=False, default=False)
-    IsActive = Column(Boolean, nullable=False, default=True)
-    CreatedDate = Column(DateTime, nullable=False, default=datetime.utcnow)
+    # For DynamoDB relationships, we'll use lists of IDs
+    AddressIds: List[str] = Field(default_factory=list)
     
-    # Relationships
-    customer = relationship("Customer", back_populates="customer_addresses")
-    address = relationship("Address", back_populates="customer_addresses")
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
-class Township(Base):
-    __tablename__ = "Townships"
+class CustomerAddress(BaseModel):
+    CustomerAddressId: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    CustomerId: str
+    AddressId: str
+    IsPrimary: bool = False
+    IsActive: bool = True
+    CreatedDate: datetime = Field(default_factory=datetime.utcnow)
     
-    TownshipId = Column(Integer, primary_key=True, index=True)
-    TownshipName = Column(String(100), nullable=False, unique=True)
-    County = Column(String(100), nullable=False)
-    State = Column(String(50), nullable=False)
-    IsActive = Column(Boolean, nullable=False, default=True)
-    CreatedDate = Column(DateTime, nullable=False, default=datetime.utcnow)
-    ModifiedDate = Column(DateTime, nullable=False, default=datetime.utcnow)
-    CreatedBy = Column(String(100), nullable=True)
-    ModifiedBy = Column(String(100), nullable=True)
-    
-    # Relationships
-    properties = relationship("Property", back_populates="township")
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
-class Property(Base):
-    __tablename__ = "Properties"
+class Township(BaseModel):
+    TownshipId: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    TownshipName: str
+    County: str
+    State: str
+    IsActive: bool = True
+    CreatedDate: datetime = Field(default_factory=datetime.utcnow)
+    ModifiedDate: datetime = Field(default_factory=datetime.utcnow)
+    CreatedBy: Optional[str] = None
+    ModifiedBy: Optional[str] = None
     
-    PropertyId = Column(Integer, primary_key=True, index=True)
-    PropertyCode = Column(String(50), nullable=False, unique=True)
-    PropertyName = Column(String(255), nullable=False, index=True)
-    PropertyDescription = Column(Text, nullable=True)
-    OwnerName = Column(String(255), nullable=True)
-    OwnerPhone = Column(String(20), nullable=True)
-    OwnerEmail = Column(String(255), nullable=True)
-    AddressId = Column(Integer, ForeignKey("Addresses.AddressId"), nullable=True)
-    TownshipId = Column(Integer, ForeignKey("Townships.TownshipId"), nullable=True)
-    IsActive = Column(Boolean, nullable=False, default=True)
-    CreatedDate = Column(DateTime, nullable=False, default=datetime.utcnow)
-    ModifiedDate = Column(DateTime, nullable=False, default=datetime.utcnow)
-    CreatedBy = Column(String(100), nullable=True)
-    ModifiedBy = Column(String(100), nullable=True)
-    
-    # Relationships
-    address = relationship("Address", back_populates="properties")
-    township = relationship("Township", back_populates="properties")
-    surveys = relationship("Survey", back_populates="property")
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
-class SurveyType(Base):
-    __tablename__ = "SurveyTypes"
+class Property(BaseModel):
+    PropertyId: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    PropertyCode: str
+    PropertyName: str
+    PropertyDescription: Optional[str] = None
+    OwnerName: Optional[str] = None
+    OwnerPhone: Optional[str] = None
+    OwnerEmail: Optional[str] = None
+    AddressId: Optional[str] = None
+    TownshipId: Optional[str] = None
+    IsActive: bool = True
+    CreatedDate: datetime = Field(default_factory=datetime.utcnow)
+    ModifiedDate: datetime = Field(default_factory=datetime.utcnow)
+    CreatedBy: Optional[str] = None
+    ModifiedBy: Optional[str] = None
     
-    SurveyTypeId = Column(Integer, primary_key=True, index=True)
-    SurveyTypeName = Column(String(100), nullable=False, unique=True)
-    Description = Column(Text, nullable=True)
-    IsActive = Column(Boolean, nullable=False, default=True)
-    
-    # Relationships
-    surveys = relationship("Survey", back_populates="survey_type")
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
-class SurveyStatus(Base):
-    __tablename__ = "SurveyStatuses"
+class SurveyType(BaseModel):
+    SurveyTypeId: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    SurveyTypeName: str
+    Description: Optional[str] = None
+    IsActive: bool = True
     
-    SurveyStatusId = Column(Integer, primary_key=True, index=True)
-    StatusName = Column(String(50), nullable=False, unique=True)
-    Description = Column(Text, nullable=True)
-    IsActive = Column(Boolean, nullable=False, default=True)
-    
-    # Relationships
-    surveys = relationship("Survey", back_populates="survey_status")
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
-class Survey(Base):
-    __tablename__ = "Surveys"
+class SurveyStatus(BaseModel):
+    SurveyStatusId: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    StatusName: str
+    Description: Optional[str] = None
+    IsActive: bool = True
     
-    SurveyId = Column(Integer, primary_key=True, index=True)
-    SurveyNumber = Column(String(50), nullable=False, unique=True)
-    SurveyTypeId = Column(Integer, ForeignKey("SurveyTypes.SurveyTypeId"), nullable=False)
-    CustomerId = Column(Integer, ForeignKey("Customers.CustomerId"), nullable=False)
-    PropertyId = Column(Integer, ForeignKey("Properties.PropertyId"), nullable=False)
-    SurveyStatusId = Column(Integer, ForeignKey("SurveyStatuses.SurveyStatusId"), nullable=False)
-    EstimatedCost = Column(Numeric(10, 2), nullable=True)
-    ActualCost = Column(Numeric(10, 2), nullable=True)
-    RequestDate = Column(DateTime, nullable=True, default=datetime.utcnow)
-    CompletedDate = Column(DateTime, nullable=True)
-    Notes = Column(Text, nullable=True)
-    SurveyorNotes = Column(Text, nullable=True)
-    IsActive = Column(Boolean, nullable=False, default=True)
-    CreatedDate = Column(DateTime, nullable=False, default=datetime.utcnow)
-    ModifiedDate = Column(DateTime, nullable=False, default=datetime.utcnow)
-    CreatedBy = Column(String(100), nullable=True)
-    ModifiedBy = Column(String(100), nullable=True)
-    
-    # Relationships
-    survey_type = relationship("SurveyType", back_populates="surveys")
-    customer = relationship("Customer", back_populates="surveys")
-    property = relationship("Property", back_populates="surveys")
-    survey_status = relationship("SurveyStatus", back_populates="surveys")
-    survey_files = relationship("SurveyFile", back_populates="survey")
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
-class SurveyFile(Base):
-    __tablename__ = "SurveyFiles"
+class Survey(BaseModel):
+    SurveyId: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    SurveyNumber: str
+    SurveyTypeId: str
+    CustomerId: str
+    PropertyId: str
+    SurveyStatusId: str
+    EstimatedCost: Optional[Decimal] = None
+    ActualCost: Optional[Decimal] = None
+    RequestDate: datetime = Field(default_factory=datetime.utcnow)
+    CompletedDate: Optional[datetime] = None
+    Notes: Optional[str] = None
+    SurveyorNotes: Optional[str] = None
+    IsActive: bool = True
+    CreatedDate: datetime = Field(default_factory=datetime.utcnow)
+    ModifiedDate: datetime = Field(default_factory=datetime.utcnow)
+    CreatedBy: Optional[str] = None
+    ModifiedBy: Optional[str] = None
     
-    SurveyFileId = Column(Integer, primary_key=True, index=True)
-    SurveyId = Column(Integer, ForeignKey("Surveys.SurveyId"), nullable=False)
-    FileName = Column(String(255), nullable=False)
-    FileType = Column(String(50), nullable=False)
-    FileSize = Column(BigInteger, nullable=False)
-    FilePath = Column(String(500), nullable=False)
-    Description = Column(Text, nullable=True)
-    IsActive = Column(Boolean, nullable=False, default=True)
-    CreatedDate = Column(DateTime, nullable=False, default=datetime.utcnow)
-    
-    # Relationships
-    survey = relationship("Survey", back_populates="survey_files")
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            Decimal: lambda v: float(v)
+        }
 
-class Document(Base):
-    __tablename__ = "Documents"
+class SurveyFile(BaseModel):
+    SurveyFileId: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    SurveyId: str
+    FileName: str
+    FileType: str
+    FileSize: int
+    FilePath: str
+    Description: Optional[str] = None
+    IsActive: bool = True
+    CreatedDate: datetime = Field(default_factory=datetime.utcnow)
     
-    DocumentId = Column(Integer, primary_key=True, index=True)
-    DocumentName = Column(String(255), nullable=False)
-    DocumentType = Column(String(50), nullable=False)
-    DocumentSize = Column(BigInteger, nullable=False)
-    DocumentPath = Column(String(500), nullable=False)
-    Description = Column(Text, nullable=True)
-    UploadedBy = Column(String(100), nullable=True)
-    UploadedDate = Column(DateTime, nullable=False, default=datetime.utcnow)
-    IsActive = Column(Boolean, nullable=False, default=True)
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+
+class Document(BaseModel):
+    DocumentId: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    DocumentName: str
+    DocumentType: str
+    DocumentSize: int
+    DocumentPath: str
+    Description: Optional[str] = None
+    UploadedBy: Optional[str] = None
+    UploadedDate: datetime = Field(default_factory=datetime.utcnow)
+    IsActive: bool = True
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+
+# DynamoDB table configurations
+DYNAMODB_TABLES = {
+    'Addresses': {
+        'TableName': 'Addresses',
+        'KeySchema': [
+            {'AttributeName': 'AddressId', 'KeyType': 'HASH'}
+        ],
+        'AttributeDefinitions': [
+            {'AttributeName': 'AddressId', 'AttributeType': 'S'}
+        ],
+        'GlobalSecondaryIndexes': [
+            {
+                'IndexName': 'AddressTypeIndex',
+                'KeySchema': [
+                    {'AttributeName': 'AddressType', 'KeyType': 'HASH'}
+                ],
+                'AttributeDefinitions': [
+                    {'AttributeName': 'AddressType', 'AttributeType': 'S'}
+                ]
+            }
+        ]
+    },
+    'Customers': {
+        'TableName': 'Customers',
+        'KeySchema': [
+            {'AttributeName': 'CustomerId', 'KeyType': 'HASH'}
+        ],
+        'AttributeDefinitions': [
+            {'AttributeName': 'CustomerId', 'AttributeType': 'S'},
+            {'AttributeName': 'CustomerCode', 'AttributeType': 'S'},
+            {'AttributeName': 'CompanyName', 'AttributeType': 'S'}
+        ],
+        'GlobalSecondaryIndexes': [
+            {
+                'IndexName': 'CustomerCodeIndex',
+                'KeySchema': [
+                    {'AttributeName': 'CustomerCode', 'KeyType': 'HASH'}
+                ]
+            },
+            {
+                'IndexName': 'CompanyNameIndex',
+                'KeySchema': [
+                    {'AttributeName': 'CompanyName', 'KeyType': 'HASH'}
+                ]
+            }
+        ]
+    },
+    'CustomerAddresses': {
+        'TableName': 'CustomerAddresses',
+        'KeySchema': [
+            {'AttributeName': 'CustomerAddressId', 'KeyType': 'HASH'}
+        ],
+        'AttributeDefinitions': [
+            {'AttributeName': 'CustomerAddressId', 'AttributeType': 'S'},
+            {'AttributeName': 'CustomerId', 'AttributeType': 'S'}
+        ],
+        'GlobalSecondaryIndexes': [
+            {
+                'IndexName': 'CustomerIdIndex',
+                'KeySchema': [
+                    {'AttributeName': 'CustomerId', 'KeyType': 'HASH'}
+                ]
+            }
+        ]
+    },
+    'Townships': {
+        'TableName': 'Townships',
+        'KeySchema': [
+            {'AttributeName': 'TownshipId', 'KeyType': 'HASH'}
+        ],
+        'AttributeDefinitions': [
+            {'AttributeName': 'TownshipId', 'AttributeType': 'S'},
+            {'AttributeName': 'TownshipName', 'AttributeType': 'S'}
+        ],
+        'GlobalSecondaryIndexes': [
+            {
+                'IndexName': 'TownshipNameIndex',
+                'KeySchema': [
+                    {'AttributeName': 'TownshipName', 'KeyType': 'HASH'}
+                ]
+            }
+        ]
+    },
+    'Properties': {
+        'TableName': 'Properties',
+        'KeySchema': [
+            {'AttributeName': 'PropertyId', 'KeyType': 'HASH'}
+        ],
+        'AttributeDefinitions': [
+            {'AttributeName': 'PropertyId', 'AttributeType': 'S'},
+            {'AttributeName': 'PropertyCode', 'AttributeType': 'S'}
+        ],
+        'GlobalSecondaryIndexes': [
+            {
+                'IndexName': 'PropertyCodeIndex',
+                'KeySchema': [
+                    {'AttributeName': 'PropertyCode', 'KeyType': 'HASH'}
+                ]
+            }
+        ]
+    },
+    'SurveyTypes': {
+        'TableName': 'SurveyTypes',
+        'KeySchema': [
+            {'AttributeName': 'SurveyTypeId', 'KeyType': 'HASH'}
+        ],
+        'AttributeDefinitions': [
+            {'AttributeName': 'SurveyTypeId', 'AttributeType': 'S'}
+        ]
+    },
+    'SurveyStatuses': {
+        'TableName': 'SurveyStatuses',
+        'KeySchema': [
+            {'AttributeName': 'SurveyStatusId', 'KeyType': 'HASH'}
+        ],
+        'AttributeDefinitions': [
+            {'AttributeName': 'SurveyStatusId', 'AttributeType': 'S'}
+        ]
+    },
+    'Surveys': {
+        'TableName': 'Surveys',
+        'KeySchema': [
+            {'AttributeName': 'SurveyId', 'KeyType': 'HASH'}
+        ],
+        'AttributeDefinitions': [
+            {'AttributeName': 'SurveyId', 'AttributeType': 'S'},
+            {'AttributeName': 'SurveyNumber', 'AttributeType': 'S'},
+            {'AttributeName': 'CustomerId', 'AttributeType': 'S'}
+        ],
+        'GlobalSecondaryIndexes': [
+            {
+                'IndexName': 'SurveyNumberIndex',
+                'KeySchema': [
+                    {'AttributeName': 'SurveyNumber', 'KeyType': 'HASH'}
+                ]
+            },
+            {
+                'IndexName': 'CustomerIdIndex',
+                'KeySchema': [
+                    {'AttributeName': 'CustomerId', 'KeyType': 'HASH'}
+                ]
+            }
+        ]
+    },
+    'SurveyFiles': {
+        'TableName': 'SurveyFiles',
+        'KeySchema': [
+            {'AttributeName': 'SurveyFileId', 'KeyType': 'HASH'}
+        ],
+        'AttributeDefinitions': [
+            {'AttributeName': 'SurveyFileId', 'AttributeType': 'S'},
+            {'AttributeName': 'SurveyId', 'AttributeType': 'S'}
+        ],
+        'GlobalSecondaryIndexes': [
+            {
+                'IndexName': 'SurveyIdIndex',
+                'KeySchema': [
+                    {'AttributeName': 'SurveyId', 'KeyType': 'HASH'}
+                ]
+            }
+        ]
+    },
+    'Documents': {
+        'TableName': 'Documents',
+        'KeySchema': [
+            {'AttributeName': 'DocumentId', 'KeyType': 'HASH'}
+        ],
+        'AttributeDefinitions': [
+            {'AttributeName': 'DocumentId', 'AttributeType': 'S'}
+        ]
+    }
+}
