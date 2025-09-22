@@ -2,6 +2,52 @@
 
 A full-stack CRUD application for managing surveys, customers, and properties with a Python FastAPI backend and React frontend.
 
+## Quick Start (Automated Setup)
+
+### 🚀 Python 3.13.7 Setup (Recommended for Windows)
+```powershell
+# Run the Python 3.13.7 setup script
+.\setup_python313.ps1
+```
+
+This script will:
+- Check for Python 3.13.7 installation
+- Create a virtual environment
+- Install all dependencies
+- Set up the project structure
+
+### Legacy Setup Scripts
+```powershell
+# Windows PowerShell (legacy)
+.\setup.ps1
+
+# Windows Batch
+setup.bat
+
+# Linux/Mac
+chmod +x setup.sh && ./setup.sh
+```
+
+### After Automated Setup
+
+1. **Configure AWS credentials** (see `DYNAMODB_MIGRATION.md` for details)
+2. **Create DynamoDB tables**:
+   ```bash
+   cd backend
+   python create_tables.py create
+   ```
+3. **Start the backend**:
+   ```bash
+   python main.py
+   ```
+4. **Start the frontend** (in a new terminal):
+   ```bash
+   cd frontend
+   npm install && npm start
+   ```
+
+---
+
 ## Project Structure
 
 ```
@@ -23,9 +69,10 @@ SurveyManagementReactApp/
 
 ### Backend
 - **FastAPI**: Modern Python web framework
-- **SQLAlchemy**: Database ORM
-- **Pydantic**: Data validation
-- **SQL Server**: Database (via pyodbc)
+- **Pydantic**: Data validation and settings management
+- **Boto3**: AWS SDK for DynamoDB operations
+- **DynamoDB**: NoSQL database service
+- **GraphQL**: Query language with Graphene
 
 ### Frontend
 - **React 18**: UI library
@@ -39,9 +86,10 @@ SurveyManagementReactApp/
 ## Getting Started
 
 ### Prerequisites
-- Python 3.8+
+- **Python 3.13.7+** (latest version for optimal performance)
 - Node.js 16+
-- SQL Server (with the provided schema)
+- AWS Account or DynamoDB Local (for NoSQL database)
+- Git (for version control)
 
 ### Backend Setup
 

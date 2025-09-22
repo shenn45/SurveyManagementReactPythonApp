@@ -1,253 +1,301 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func
-from typing import List, Optional
+from boto3.dynamodb.conditions import Key, Attr
+from botocore.exceptions import ClientError
+from typing import List, Optional, Dict, Any
+from datetime import datetime
+from decimal import Decimal
+import uuid
+
+from database import get_table
 from models import *
 import schemas
 
+# Helper functions
+def serialize_datetime(obj):
+    """Convert datetime objects to ISO string format for DynamoDB"""
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    return obj
+
+def serialize_item(item: dict) -> dict:
+    """Serialize Python objects for DynamoDB storage"""
+    serialized = {}
+    for key, value in item.items():
+        if isinstance(value, datetime):
+            serialized[key] = value.isoformat()
+        elif isinstance(value, Decimal):
+            serialized[key] = float(value)
+        else:
+            serialized[key] = value
+    return serialized
+
+def deserialize_item(item: dict) -> dict:
+    """Deserialize DynamoDB item to Python objects"""
+    if not item:
+        return None
+    
+    deserialized = {}
+    for key, value in item.items():
+        if key.endswith('Date') and isinstance(value, str):
+            try:
+                deserialized[key] = datetime.fromisoformat(value)
+            except ValueError:
+                deserialized[key] = value
+        else:
+            deserialized[key] = value
+    return deserialized
+
 # Customer CRUD
-def get_customer(db: Session, customer_id: int):
-    return db.query(Customer).filter(Customer.CustomerId == customer_id).first()
+def get_customer(customer_id: str) -> Optional[Customer]:
+    """Get a single customer by ID"""
+    table = get_table('Customers')
+    try:
+        response = table.get_item(Key={'CustomerId': customer_id})
+        item = response.get('Item')
+        if item:
+            return Customer(**deserialize_item(item))
+        return None
+    except ClientError as e:
+        print(f"Error getting customer: {e}")
+        return None
 
-def get_customers(db: Session, skip: int = 0, limit: int = 100, search: Optional[str] = None):
-    query = db.query(Customer)
+def get_customers(skip: int = 0, limit: int = 100, search: Optional[str] = None) -> tuple[List[Customer], int]:
+    """Get customers with pagination and optional search"""
+    table = get_table('Customers')
     
-    if search:
-        query = query.filter(
-            or_(
-                Customer.CompanyName.contains(search),
-                Customer.CustomerCode.contains(search),
-                Customer.Email.contains(search)
+    try:
+        if search:
+            filter_expression = Attr('CompanyName').contains(search) | \
+                              Attr('CustomerCode').contains(search) | \
+                              Attr('Email').contains(search)
+            
+            response = table.scan(
+                FilterExpression=filter_expression,
+                Limit=limit + skip
             )
+        else:
+            response = table.scan(Limit=limit + skip)
+        
+        items = response.get('Items', [])
+        total = len(items)
+        paginated_items = items[skip:skip + limit]
+        
+        customers = [Customer(**deserialize_item(item)) for item in paginated_items]
+        return customers, total
+        
+    except ClientError as e:
+        print(f"Error getting customers: {e}")
+        return [], 0
+
+def create_customer(customer: schemas.CustomerCreate) -> Optional[Customer]:
+    """Create a new customer"""
+    table = get_table('Customers')
+    
+    customer_data = customer.dict()
+    customer_data['CustomerId'] = str(uuid.uuid4())
+    customer_data['CreatedDate'] = datetime.utcnow()
+    customer_data['ModifiedDate'] = datetime.utcnow()
+    
+    try:
+        serialized_data = serialize_item(customer_data)
+        table.put_item(Item=serialized_data)
+        return Customer(**customer_data)
+    except ClientError as e:
+        print(f"Error creating customer: {e}")
+        return None
+
+def update_customer(customer_id: str, customer: schemas.CustomerUpdate) -> Optional[Customer]:
+    """Update an existing customer"""
+    table = get_table('Customers')
+    
+    update_data = customer.dict(exclude_unset=True)
+    update_data['ModifiedDate'] = datetime.utcnow()
+    
+    update_expression_parts = []
+    expression_attribute_values = {}
+    
+    for key, value in update_data.items():
+        update_expression_parts.append(f"{key} = :{key}")
+        expression_attribute_values[f":{key}"] = serialize_datetime(value)
+    
+    update_expression = "SET " + ", ".join(update_expression_parts)
+    
+    try:
+        response = table.update_item(
+            Key={'CustomerId': customer_id},
+            UpdateExpression=update_expression,
+            ExpressionAttributeValues=expression_attribute_values,
+            ReturnValues="ALL_NEW"
         )
+        
+        updated_item = response.get('Attributes')
+        if updated_item:
+            return Customer(**deserialize_item(updated_item))
+        return None
+        
+    except ClientError as e:
+        print(f"Error updating customer: {e}")
+        return None
+
+def delete_customer(customer_id: str) -> bool:
+    """Delete a customer (soft delete by setting IsActive to False)"""
+    table = get_table('Customers')
     
-    total = query.count()
-    customers = query.offset(skip).limit(limit).all()
-    return customers, total
-
-def create_customer(db: Session, customer: schemas.CustomerCreate):
-    db_customer = Customer(**customer.dict())
-    db.add(db_customer)
-    db.commit()
-    db.refresh(db_customer)
-    return db_customer
-
-def update_customer(db: Session, customer_id: int, customer: schemas.CustomerUpdate):
-    db_customer = db.query(Customer).filter(Customer.CustomerId == customer_id).first()
-    if db_customer:
-        for key, value in customer.dict(exclude_unset=True).items():
-            setattr(db_customer, key, value)
-        db_customer.ModifiedDate = func.utcnow()
-        db.commit()
-        db.refresh(db_customer)
-    return db_customer
-
-def delete_customer(db: Session, customer_id: int):
-    db_customer = db.query(Customer).filter(Customer.CustomerId == customer_id).first()
-    if db_customer:
-        db.delete(db_customer)
-        db.commit()
-    return db_customer
-
-# Address CRUD
-def get_address(db: Session, address_id: int):
-    return db.query(Address).filter(Address.AddressId == address_id).first()
-
-def get_addresses(db: Session, skip: int = 0, limit: int = 100, search: Optional[str] = None):
-    query = db.query(Address)
-    
-    if search:
-        query = query.filter(
-            or_(
-                Address.AddressLine1.contains(search),
-                Address.City.contains(search),
-                Address.StateCode.contains(search),
-                Address.ZipCode.contains(search)
-            )
+    try:
+        table.update_item(
+            Key={'CustomerId': customer_id},
+            UpdateExpression="SET IsActive = :inactive, ModifiedDate = :modified",
+            ExpressionAttributeValues={
+                ':inactive': False,
+                ':modified': datetime.utcnow().isoformat()
+            }
         )
-    
-    total = query.count()
-    addresses = query.offset(skip).limit(limit).all()
-    return addresses, total
-
-def create_address(db: Session, address: schemas.AddressCreate):
-    db_address = Address(**address.dict())
-    db.add(db_address)
-    db.commit()
-    db.refresh(db_address)
-    return db_address
-
-def update_address(db: Session, address_id: int, address: schemas.AddressUpdate):
-    db_address = db.query(Address).filter(Address.AddressId == address_id).first()
-    if db_address:
-        for key, value in address.dict(exclude_unset=True).items():
-            setattr(db_address, key, value)
-        db.commit()
-        db.refresh(db_address)
-    return db_address
-
-def delete_address(db: Session, address_id: int):
-    db_address = db.query(Address).filter(Address.AddressId == address_id).first()
-    if db_address:
-        db.delete(db_address)
-        db.commit()
-    return db_address
-
-# Property CRUD
-def get_property(db: Session, property_id: int):
-    return db.query(Property).filter(Property.PropertyId == property_id).first()
-
-def get_properties(db: Session, skip: int = 0, limit: int = 100, search: Optional[str] = None):
-    query = db.query(Property).join(Address, Property.AddressId == Address.AddressId, isouter=True)
-    
-    if search:
-        query = query.filter(
-            or_(
-                Property.LegacyTax.contains(search),
-                Property.District.contains(search),
-                Property.Block.contains(search),
-                Property.Lot.contains(search),
-                Address.AddressLine1.contains(search),
-                Address.City.contains(search)
-            )
-        )
-    
-    total = query.count()
-    properties = query.offset(skip).limit(limit).all()
-    return properties, total
-
-def create_property(db: Session, property: schemas.PropertyCreate):
-    db_property = Property(**property.dict())
-    db.add(db_property)
-    db.commit()
-    db.refresh(db_property)
-    return db_property
-
-def update_property(db: Session, property_id: int, property: schemas.PropertyUpdate):
-    db_property = db.query(Property).filter(Property.PropertyId == property_id).first()
-    if db_property:
-        for key, value in property.dict(exclude_unset=True).items():
-            setattr(db_property, key, value)
-        db_property.ModifiedDate = func.utcnow()
-        db.commit()
-        db.refresh(db_property)
-    return db_property
-
-def delete_property(db: Session, property_id: int):
-    db_property = db.query(Property).filter(Property.PropertyId == property_id).first()
-    if db_property:
-        db.delete(db_property)
-        db.commit()
-    return db_property
+        return True
+    except ClientError as e:
+        print(f"Error deleting customer: {e}")
+        return False
 
 # Survey CRUD
-def get_survey(db: Session, survey_id: int):
-    return db.query(Survey).filter(Survey.SurveyId == survey_id).first()
+def get_survey(survey_id: str) -> Optional[Survey]:
+    """Get a single survey by ID"""
+    table = get_table('Surveys')
+    try:
+        response = table.get_item(Key={'SurveyId': survey_id})
+        item = response.get('Item')
+        if item:
+            return Survey(**deserialize_item(item))
+        return None
+    except ClientError as e:
+        print(f"Error getting survey: {e}")
+        return None
 
-def get_surveys(db: Session, skip: int = 0, limit: int = 100, search: Optional[str] = None):
-    query = db.query(Survey).join(Customer, Survey.CustomerId == Customer.CustomerId, isouter=True)
+def get_surveys(skip: int = 0, limit: int = 100, search: Optional[str] = None) -> tuple[List[Survey], int]:
+    """Get surveys with pagination and optional search"""
+    table = get_table('Surveys')
     
-    if search:
-        query = query.filter(
-            or_(
-                Survey.SurveyNumber.contains(search),
-                Survey.Title.contains(search),
-                Customer.CompanyName.contains(search)
+    try:
+        if search:
+            filter_expression = Attr('SurveyNumber').contains(search) | \
+                              Attr('Notes').contains(search)
+            
+            response = table.scan(
+                FilterExpression=filter_expression,
+                Limit=limit + skip
             )
-        )
+        else:
+            response = table.scan(Limit=limit + skip)
+        
+        items = response.get('Items', [])
+        total = len(items)
+        paginated_items = items[skip:skip + limit]
+        
+        surveys = [Survey(**deserialize_item(item)) for item in paginated_items]
+        return surveys, total
+        
+    except ClientError as e:
+        print(f"Error getting surveys: {e}")
+        return [], 0
+
+def create_survey(survey: schemas.SurveyCreate) -> Optional[Survey]:
+    """Create a new survey"""
+    table = get_table('Surveys')
     
-    total = query.count()
-    surveys = query.offset(skip).limit(limit).all()
-    return surveys, total
+    survey_data = survey.dict()
+    survey_data['SurveyId'] = str(uuid.uuid4())
+    survey_data['CreatedDate'] = datetime.utcnow()
+    survey_data['ModifiedDate'] = datetime.utcnow()
+    survey_data['RequestDate'] = datetime.utcnow()
+    
+    try:
+        serialized_data = serialize_item(survey_data)
+        table.put_item(Item=serialized_data)
+        return Survey(**survey_data)
+    except ClientError as e:
+        print(f"Error creating survey: {e}")
+        return None
 
-def create_survey(db: Session, survey: schemas.SurveyCreate):
-    db_survey = Survey(**survey.dict())
-    db.add(db_survey)
-    db.commit()
-    db.refresh(db_survey)
-    return db_survey
+# Property CRUD
+def get_property(property_id: str) -> Optional[Property]:
+    """Get a single property by ID"""
+    table = get_table('Properties')
+    try:
+        response = table.get_item(Key={'PropertyId': property_id})
+        item = response.get('Item')
+        if item:
+            return Property(**deserialize_item(item))
+        return None
+    except ClientError as e:
+        print(f"Error getting property: {e}")
+        return None
 
-def update_survey(db: Session, survey_id: int, survey: schemas.SurveyUpdate):
-    db_survey = db.query(Survey).filter(Survey.SurveyId == survey_id).first()
-    if db_survey:
-        for key, value in survey.dict(exclude_unset=True).items():
-            setattr(db_survey, key, value)
-        db_survey.ModifiedDate = func.utcnow()
-        db.commit()
-        db.refresh(db_survey)
-    return db_survey
+def get_properties(skip: int = 0, limit: int = 100, search: Optional[str] = None) -> tuple[List[Property], int]:
+    """Get properties with pagination and optional search"""
+    table = get_table('Properties')
+    
+    try:
+        if search:
+            filter_expression = Attr('PropertyName').contains(search) | \
+                              Attr('PropertyCode').contains(search) | \
+                              Attr('OwnerName').contains(search)
+            
+            response = table.scan(
+                FilterExpression=filter_expression,
+                Limit=limit + skip
+            )
+        else:
+            response = table.scan(Limit=limit + skip)
+        
+        items = response.get('Items', [])
+        total = len(items)
+        paginated_items = items[skip:skip + limit]
+        
+        properties = [Property(**deserialize_item(item)) for item in paginated_items]
+        return properties, total
+        
+    except ClientError as e:
+        print(f"Error getting properties: {e}")
+        return [], 0
 
-def delete_survey(db: Session, survey_id: int):
-    db_survey = db.query(Survey).filter(Survey.SurveyId == survey_id).first()
-    if db_survey:
-        db.delete(db_survey)
-        db.commit()
-    return db_survey
+def create_property(property: schemas.PropertyCreate) -> Optional[Property]:
+    """Create a new property"""
+    table = get_table('Properties')
+    
+    property_data = property.dict()
+    property_data['PropertyId'] = str(uuid.uuid4())
+    property_data['CreatedDate'] = datetime.utcnow()
+    property_data['ModifiedDate'] = datetime.utcnow()
+    
+    try:
+        serialized_data = serialize_item(property_data)
+        table.put_item(Item=serialized_data)
+        return Property(**property_data)
+    except ClientError as e:
+        print(f"Error creating property: {e}")
+        return None
 
 # Survey Type CRUD
-def get_survey_types(db: Session):
-    return db.query(SurveyType).filter(SurveyType.IsActive == True).all()
-
-def create_survey_type(db: Session, survey_type: schemas.SurveyTypeCreate):
-    db_survey_type = SurveyType(**survey_type.dict())
-    db.add(db_survey_type)
-    db.commit()
-    db.refresh(db_survey_type)
-    return db_survey_type
+def get_survey_types() -> List[SurveyType]:
+    """Get all active survey types"""
+    table = get_table('SurveyTypes')
+    try:
+        response = table.scan(
+            FilterExpression=Attr('IsActive').eq(True)
+        )
+        items = response.get('Items', [])
+        return [SurveyType(**deserialize_item(item)) for item in items]
+    except ClientError as e:
+        print(f"Error getting survey types: {e}")
+        return []
 
 # Survey Status CRUD
-def get_survey_statuses(db: Session):
-    return db.query(SurveyStatus).filter(SurveyStatus.IsActive == True).order_by(SurveyStatus.SortOrder).all()
-
-def create_survey_status(db: Session, survey_status: schemas.SurveyStatusCreate):
-    db_survey_status = SurveyStatus(**survey_status.dict())
-    db.add(db_survey_status)
-    db.commit()
-    db.refresh(db_survey_status)
-    return db_survey_status
-
-# Township CRUD
-def get_townships(db: Session):
-    return db.query(Township).all()
-
-def create_township(db: Session, township: schemas.TownshipCreate):
-    db_township = Township(**township.dict())
-    db.add(db_township)
-    db.commit()
-    db.refresh(db_township)
-    return db_township
-
-# Survey Notes CRUD
-def get_survey_notes(db: Session, survey_id: int):
-    return db.query(SurveyNote).filter(SurveyNote.SurveyId == survey_id).all()
-
-def create_survey_note(db: Session, note: schemas.SurveyNoteCreate):
-    db_note = SurveyNote(**note.dict())
-    db.add(db_note)
-    db.commit()
-    db.refresh(db_note)
-    return db_note
-
-def delete_survey_note(db: Session, note_id: int):
-    db_note = db.query(SurveyNote).filter(SurveyNote.NoteId == note_id).first()
-    if db_note:
-        db.delete(db_note)
-        db.commit()
-    return db_note
-
-# Survey Documents CRUD
-def get_survey_documents(db: Session, survey_id: int):
-    return db.query(SurveyDocument).filter(SurveyDocument.SurveyId == survey_id).all()
-
-def create_survey_document(db: Session, document: schemas.SurveyDocumentCreate):
-    db_document = SurveyDocument(**document.dict())
-    db.add(db_document)
-    db.commit()
-    db.refresh(db_document)
-    return db_document
-
-def delete_survey_document(db: Session, document_id: int):
-    db_document = db.query(SurveyDocument).filter(SurveyDocument.DocumentId == document_id).first()
-    if db_document:
-        db.delete(db_document)
-        db.commit()
-    return db_document
+def get_survey_statuses() -> List[SurveyStatus]:
+    """Get all active survey statuses"""
+    table = get_table('SurveyStatuses')
+    try:
+        response = table.scan(
+            FilterExpression=Attr('IsActive').eq(True)
+        )
+        items = response.get('Items', [])
+        return [SurveyStatus(**deserialize_item(item)) for item in items]
+    except ClientError as e:
+        print(f"Error getting survey statuses: {e}")
+        return []

@@ -4,17 +4,11 @@ from typing import Optional
 from datetime import datetime
 
 import crud
-from database import get_db
-
-
-# Utility function to get database session
-def get_db_session():
-    return next(get_db())
-
+# Remove database dependency since we're using DynamoDB
 
 # GraphQL Types
 class CustomerType(ObjectType):
-    CustomerId = Int()
+    CustomerId = String()  # Changed from Int to String for UUIDs
     CustomerCode = String()
     CompanyName = String()
     ContactFirstName = String()
@@ -31,23 +25,23 @@ class CustomerType(ObjectType):
 
 
 class SurveyType(ObjectType):
-    SurveyId = Int()
+    SurveyId = String()  # Changed from Int to String for UUIDs
     SurveyNumber = String()
-    CustomerId = Int()
-    PropertyId = Int()
-    SurveyTypeId = Int()
-    StatusId = Int()
-    Title = String()
-    Description = String()
-    PurposeCode = String()
+    CustomerId = String()  # Changed from Int to String for UUIDs
+    PropertyId = String()  # Changed from Int to String for UUIDs
+    SurveyTypeId = String()  # Changed from Int to String for UUIDs
+    SurveyStatusId = String()  # Changed from Int to String for UUIDs
+    EstimatedCost = Float()
+    ActualCost = Float()
     RequestDate = DateTime()
-    ScheduledDate = DateTime()
     CompletedDate = DateTime()
-    DeliveryDate = DateTime()
-    DueDate = DateTime()
-    QuotedPrice = Float()
-    FinalPrice = Float()
-    IsFieldworkComplete = Boolean()
+    Notes = String()
+    SurveyorNotes = String()
+    IsActive = Boolean()
+    CreatedDate = DateTime()
+    ModifiedDate = DateTime()
+    CreatedBy = String()
+    ModifiedBy = String()
     IsDrawingComplete = Boolean()
     IsScanned = Boolean()
     IsDelivered = Boolean()
@@ -321,38 +315,28 @@ class Query(ObjectType):
     townships = List(TownshipType)
 
     def resolve_customers(self, info, skip=0, limit=100, search=None):
-        db = get_db_session()
-        try:
-            customers_data, total = crud.get_customers(db, skip=skip, limit=limit, search=search)
-            customers = [model_to_customer(c) for c in customers_data]
-            return CustomerListResponse(
-                customers=customers,
-                total=total,
-                page=skip // limit + 1,
-                size=limit
-            )
-        finally:
-            db.close()
+        customers_data, total = crud.get_customers(skip=skip, limit=limit, search=search)
+        customers = [model_to_customer(c) for c in customers_data]
+        return CustomerListResponse(
+            customers=customers,
+            total=total,
+            page=skip // limit + 1,
+            size=limit
+        )
 
     def resolve_customer(self, info, customer_id):
-        db = get_db_session()
-        try:
-            customer_data = crud.get_customer(db, customer_id=customer_id)
-            return model_to_customer(customer_data) if customer_data else None
-        finally:
-            db.close()
+        customer_data = crud.get_customer(customer_id=customer_id)
+        return model_to_customer(customer_data) if customer_data else None
 
     def resolve_surveys(self, info, skip=0, limit=100, search=None):
-        db = get_db_session()
-        try:
-            surveys_data, total = crud.get_surveys(db, skip=skip, limit=limit, search=search)
-            surveys = [model_to_survey(s) for s in surveys_data]
-            return SurveyListResponse(
-                surveys=surveys,
-                total=total,
-                page=skip // limit + 1,
-                size=limit
-            )
+        surveys_data, total = crud.get_surveys(skip=skip, limit=limit, search=search)
+        surveys = [model_to_survey(s) for s in surveys_data]
+        return SurveyListResponse(
+            surveys=surveys,
+            total=total,
+            page=skip // limit + 1,
+            size=limit
+        )
         finally:
             db.close()
 
