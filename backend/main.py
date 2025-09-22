@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 # from starlette_graphene3 import GraphQLApp, make_graphiql_handler  # Temporarily disabled for testing
-# from routers import customers, surveys, properties, lookup  # Temporarily disabled for testing
+from routers import customers, surveys, properties, lookup
 # from graphql_schema import schema  # Temporarily disabled for testing
 
 app = FastAPI(
@@ -24,10 +24,10 @@ app.add_middleware(
 # app.mount("/graphql", graphql_app)  # Temporarily disabled for testing
 
 # Include REST API routers
-# app.include_router(customers.router, prefix="/api")  # Temporarily disabled for testing
-# app.include_router(surveys.router, prefix="/api")    # Temporarily disabled for testing
-# app.include_router(properties.router, prefix="/api") # Temporarily disabled for testing
-# app.include_router(lookup.router, prefix="/api")     # Temporarily disabled for testing
+app.include_router(customers.router, prefix="/api")
+app.include_router(surveys.router, prefix="/api")
+app.include_router(properties.router, prefix="/api")
+app.include_router(lookup.router, prefix="/api")
 
 @app.get("/")
 def read_root():
