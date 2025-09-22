@@ -63,12 +63,23 @@ class CustomerListResponse(ObjectType):
     size = Int()
 
 class PropertyType(ObjectType):
-    PropertyId = String()
-    PropertyNumber = String()
-    StreetAddress = String()
-    City = String()
-    State = String()
-    ZipCode = String()
+    PropertyId = Int()  # Frontend expects number
+    PropertyCode = String()
+    PropertyName = String()
+    PropertyDescription = String()
+    OwnerName = String()
+    OwnerPhone = String()
+    OwnerEmail = String()
+    AddressId = Int()  # Frontend expects number
+    TownshipId = Int()  # Frontend expects number
+    # Frontend expected fields
+    SurveyPrimaryKey = Int()  # Frontend expects number
+    LegacyTax = String()
+    District = String()
+    Section = String()
+    Block = String()
+    Lot = String()
+    PropertyType = String()
     IsActive = Boolean()
     CreatedDate = DateTime()
     ModifiedDate = DateTime()
@@ -138,16 +149,37 @@ def model_to_customer(customer):
     )
 
 def model_to_property(property):
-    """Convert Property model to GraphQL type"""
+    """Convert Property model to GraphQL type with type conversions for frontend."""
     if not property:
         return None
+    
+    # Helper function to safely convert to int
+    def safe_int(value, default=0):
+        try:
+            if value is None or value == '':
+                return default
+            return int(value)
+        except (ValueError, TypeError):
+            return default
+    
     return PropertyType(
-        PropertyId=property.PropertyId,
-        PropertyNumber=getattr(property, 'PropertyNumber', None),
-        StreetAddress=getattr(property, 'StreetAddress', None),
-        City=getattr(property, 'City', None),
-        State=getattr(property, 'State', None),
-        ZipCode=getattr(property, 'ZipCode', None),
+        PropertyId=safe_int(getattr(property, 'PropertyId', None)),
+        PropertyCode=getattr(property, 'PropertyCode', None),
+        PropertyName=getattr(property, 'PropertyName', None),
+        PropertyDescription=getattr(property, 'PropertyDescription', None),
+        OwnerName=getattr(property, 'OwnerName', None),
+        OwnerPhone=getattr(property, 'OwnerPhone', None),
+        OwnerEmail=getattr(property, 'OwnerEmail', None),
+        AddressId=safe_int(getattr(property, 'AddressId', None)),
+        TownshipId=safe_int(getattr(property, 'TownshipId', None)),
+        # Frontend expected fields with proper type conversion
+        SurveyPrimaryKey=safe_int(getattr(property, 'SurveyPrimaryKey', None)),
+        LegacyTax=getattr(property, 'LegacyTax', None),
+        District=getattr(property, 'District', None),
+        Section=getattr(property, 'Section', None),
+        Block=getattr(property, 'Block', None),
+        Lot=getattr(property, 'Lot', None),
+        PropertyType=getattr(property, 'PropertyType', "Residential"),
         IsActive=getattr(property, 'IsActive', True),
         CreatedDate=getattr(property, 'CreatedDate', None),
         ModifiedDate=getattr(property, 'ModifiedDate', None),
@@ -240,6 +272,16 @@ class CreateCustomerInput(graphene.InputObjectType):
     Fax = String()
     Website = String()
 
+class PropertyInput(graphene.InputObjectType):
+    PropertyCode = String(required=True)  # Required in models.py
+    PropertyName = String(required=True)  # Required in models.py
+    PropertyDescription = String()
+    OwnerName = String()
+    OwnerPhone = String()
+    OwnerEmail = String()
+    AddressId = String()  # String in models.py, not Int
+    TownshipId = String()  # String in models.py, not Int
+
 class CreateCustomerMutation(graphene.Mutation):
     class Arguments:
         input = CreateCustomerInput(required=True)
@@ -256,7 +298,54 @@ class CreateCustomerMutation(graphene.Mutation):
             print(f"Error creating customer: {e}")
             return CreateCustomerMutation(customer=None)
 
+class CreatePropertyMutation(graphene.Mutation):
+    class Arguments:
+        input = PropertyInput(required=True)
+    
+    # Return fields that frontend expects, even if they don't exist in models.py Property
+    PropertyId = String()  # String in models.py but frontend might expect Int
+    SurveyPrimaryKey = Int()  # Frontend expects this
+    LegacyTax = String()  # Frontend expects this
+    District = String()  # Frontend expects this  
+    Section = String()  # Frontend expects this
+    Block = String()  # Frontend expects this
+    Lot = String()  # Frontend expects this
+    AddressId = String()  # String in models.py
+    TownshipId = String()  # String in models.py
+    PropertyType = String()  # Frontend expects this
+    CreatedDate = DateTime()
+    ModifiedDate = DateTime()
+    
+    def mutate(self, info, input):
+        try:
+            from models import Property
+            # Create Property using models.py Property class directly
+            property_data = Property(**input)
+            property = crud.create_property(property=property_data)
+            if property:
+                return CreatePropertyMutation(
+                    PropertyId=getattr(property, 'PropertyId', ''),
+                    SurveyPrimaryKey=0,  # Default value since not in models.py Property
+                    LegacyTax='',  # Default value since not in models.py Property
+                    District='',  # Default value since not in models.py Property
+                    Section='',  # Default value since not in models.py Property
+                    Block='',  # Default value since not in models.py Property
+                    Lot='',  # Default value since not in models.py Property
+                    AddressId=getattr(property, 'AddressId', ''),
+                    TownshipId=getattr(property, 'TownshipId', ''),
+                    PropertyType='Residential',  # Default value since not in models.py Property
+                    CreatedDate=getattr(property, 'CreatedDate', None),
+                    ModifiedDate=getattr(property, 'ModifiedDate', None)
+                )
+            return None
+        except Exception as e:
+            print(f"Error creating property: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
 class Mutation(graphene.ObjectType):
     create_customer = CreateCustomerMutation.Field()
+    createProperty = CreatePropertyMutation.Field()
 
 schema = graphene.Schema(query=Query, mutation=Mutation)

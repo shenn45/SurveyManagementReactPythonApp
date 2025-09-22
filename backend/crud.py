@@ -318,25 +318,41 @@ def get_properties(skip: int = 0, limit: int = 100, search: Optional[str] = None
         print("Using mock property data")
         mock_properties = [
             Property(
-                PropertyId="mock-property-1",
+                PropertyId=1,  # Use integer ID to match frontend
                 PropertyCode="PROP001",
                 PropertyName="Mock Property 1",
-                Address="123 Main St",
-                City="Springfield",
-                State="IL",
-                PostalCode="62701",
+                PropertyDescription="A sample property for testing",
                 OwnerName="John Owner",
+                OwnerPhone="555-0001",
+                OwnerEmail="john@mockowner1.com",
+                AddressId=101,  # Add numeric AddressId
+                TownshipId=201,  # Add numeric TownshipId
+                SurveyPrimaryKey=301,  # Add numeric SurveyPrimaryKey
+                LegacyTax="TAX001",
+                District="District 1",
+                Section="Section A",
+                Block="Block 1",
+                Lot="Lot 1",
+                PropertyType="Residential",
                 IsActive=True
             ),
             Property(
-                PropertyId="mock-property-2",
+                PropertyId=2,  # Use integer ID to match frontend
                 PropertyCode="PROP002",
                 PropertyName="Mock Property 2", 
-                Address="456 Oak Ave",
-                City="Springfield",
-                State="IL",
-                PostalCode="62702",
+                PropertyDescription="Another sample property for testing",
                 OwnerName="Jane Owner",
+                OwnerPhone="555-0002", 
+                OwnerEmail="jane@mockowner2.com",
+                AddressId=102,  # Add numeric AddressId
+                TownshipId=202,  # Add numeric TownshipId
+                SurveyPrimaryKey=302,  # Add numeric SurveyPrimaryKey
+                LegacyTax="TAX002",
+                District="District 2",
+                Section="Section B",
+                Block="Block 2",
+                Lot="Lot 2",
+                PropertyType="Commercial",
                 IsActive=True
             )
         ]
