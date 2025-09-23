@@ -52,11 +52,19 @@ class CustomerBase(BaseModel):
 class CustomerCreate(CustomerBase):
     pass
 
-class CustomerUpdate(CustomerBase):
-    pass
+class CustomerUpdate(BaseModel):
+    CustomerCode: Optional[str] = None
+    CompanyName: Optional[str] = None
+    ContactFirstName: Optional[str] = None
+    ContactLastName: Optional[str] = None
+    Email: Optional[str] = None
+    Phone: Optional[str] = None
+    Fax: Optional[str] = None
+    Website: Optional[str] = None
+    IsActive: Optional[bool] = None
 
 class Customer(CustomerBase):
-    CustomerId: int
+    CustomerId: str  # Changed from int to str for UUID consistency
     CreatedDate: datetime
     ModifiedDate: datetime
     CreatedBy: Optional[str] = None

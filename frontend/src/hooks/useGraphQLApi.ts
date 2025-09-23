@@ -56,7 +56,7 @@ export const useCustomers = (page = 1, size = 100, search?: string) => {
   };
 };
 
-export const useCustomer = (customerId: number) => {
+export const useCustomer = (customerId: string) => {
   const { data, loading, error } = useQuery(GET_CUSTOMER, {
     variables: { customerId },
     skip: !customerId,
@@ -79,7 +79,7 @@ export const useCreateCustomer = () => {
       },
       refetchQueries: [GET_CUSTOMERS],
     });
-    return (result.data as any).createCustomer;
+    return (result.data as any).createCustomer.customer;
   };
 
   return { create, loading, error };
@@ -88,7 +88,7 @@ export const useCreateCustomer = () => {
 export const useUpdateCustomer = () => {
   const [updateCustomer, { loading, error }] = useMutation(UPDATE_CUSTOMER);
 
-  const update = async (id: number, customer: Partial<CustomerCreate>): Promise<Customer> => {
+  const update = async (id: string, customer: Partial<CustomerCreate>): Promise<Customer> => {
     const result = await updateCustomer({
       variables: {
         customerId: id,
@@ -96,7 +96,7 @@ export const useUpdateCustomer = () => {
       },
       refetchQueries: [GET_CUSTOMERS, GET_CUSTOMER],
     });
-    return (result.data as any).updateCustomer;
+    return (result.data as any).updateCustomer.customer;
   };
 
   return { update, loading, error };
@@ -105,14 +105,14 @@ export const useUpdateCustomer = () => {
 export const useDeleteCustomer = () => {
   const [deleteCustomer, { loading, error }] = useMutation(DELETE_CUSTOMER);
 
-  const remove = async (id: number): Promise<boolean> => {
+  const remove = async (id: string): Promise<boolean> => {
     const result = await deleteCustomer({
       variables: {
         customerId: id,
       },
       refetchQueries: [GET_CUSTOMERS],
     });
-    return (result.data as any).deleteCustomer;
+    return (result.data as any).deleteCustomer.success;
   };
 
   return { remove, loading, error };
@@ -133,7 +133,7 @@ export const useSurveys = (page = 1, size = 100, search?: string) => {
   };
 };
 
-export const useSurvey = (surveyId: number) => {
+export const useSurvey = (surveyId: string) => {
   const { data, loading, error } = useQuery(GET_SURVEY, {
     variables: { surveyId },
     skip: !surveyId,
@@ -165,7 +165,7 @@ export const useCreateSurvey = () => {
 export const useUpdateSurvey = () => {
   const [updateSurvey, { loading, error }] = useMutation(UPDATE_SURVEY);
 
-  const update = async (id: number, survey: Partial<SurveyCreate>): Promise<Survey> => {
+  const update = async (id: string, survey: Partial<SurveyCreate>): Promise<Survey> => {
     const result = await updateSurvey({
       variables: {
         surveyId: id,
@@ -182,7 +182,7 @@ export const useUpdateSurvey = () => {
 export const useDeleteSurvey = () => {
   const [deleteSurvey, { loading, error }] = useMutation(DELETE_SURVEY);
 
-  const remove = async (id: number): Promise<boolean> => {
+  const remove = async (id: string): Promise<boolean> => {
     const result = await deleteSurvey({
       variables: {
         surveyId: id,
@@ -266,7 +266,7 @@ export const useDeleteProperty = () => {
       },
       refetchQueries: [GET_PROPERTIES],
     });
-    return (result.data as any).deleteProperty;
+    return (result.data as any).deleteProperty.success;
   };
 
   return { remove, loading, error };

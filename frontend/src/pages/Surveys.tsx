@@ -22,8 +22,8 @@ export default function Surveys() {
   const [editingSurvey, setEditingSurvey] = useState<Survey | null>(null);
   const [formData, setFormData] = useState<SurveyCreate>({
     SurveyNumber: '',
-    CustomerId: 0,
-    PropertyId: 0,
+    CustomerId: undefined,
+    PropertyId: undefined,
     SurveyTypeId: 0,
     StatusId: 0,
     Title: '',
@@ -92,8 +92,8 @@ export default function Surveys() {
   const resetForm = () => {
     setFormData({
       SurveyNumber: '',
-      CustomerId: 0,
-      PropertyId: 0,
+      CustomerId: undefined,
+      PropertyId: undefined,
       SurveyTypeId: 0,
       StatusId: 0,
       Title: '',
@@ -307,11 +307,11 @@ export default function Surveys() {
               <select
                 id="customerId"
                 required
-                value={formData.CustomerId}
-                onChange={(e) => setFormData({ ...formData, CustomerId: parseInt(e.target.value) })}
+                value={formData.CustomerId || ''}
+                onChange={(e) => setFormData({ ...formData, CustomerId: e.target.value || undefined })}
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               >
-                <option value={0}>Select a customer...</option>
+                <option value="">Select a customer...</option>
                 {customersData?.customers.map((customer) => (
                   <option key={customer.CustomerId} value={customer.CustomerId}>
                     {customer.CompanyName}
@@ -325,11 +325,11 @@ export default function Surveys() {
               </label>
               <select
                 id="propertyId"
-                value={formData.PropertyId}
-                onChange={(e) => setFormData({ ...formData, PropertyId: parseInt(e.target.value) })}
+                value={formData.PropertyId || ''}
+                onChange={(e) => setFormData({ ...formData, PropertyId: e.target.value || undefined })}
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               >
-                <option value={0}>Select a property...</option>
+                <option value="">Select a property...</option>
                 {propertiesData?.properties.map((property) => (
                   <option key={property.PropertyId} value={property.PropertyId}>
                     {property.District} - {property.Section} - {property.Block} - {property.Lot}

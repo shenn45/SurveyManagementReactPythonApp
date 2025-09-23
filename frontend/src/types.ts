@@ -1,5 +1,5 @@
 export interface Customer {
-  CustomerId: number;
+  CustomerId: string;
   CustomerCode: string;
   CompanyName: string;
   ContactFirstName?: string;
@@ -28,10 +28,10 @@ export interface CustomerCreate {
 }
 
 export interface Survey {
-  SurveyId: number;
+  SurveyId: string;
   SurveyNumber: string;
-  CustomerId?: number;
-  PropertyId?: number;
+  CustomerId?: string;
+  PropertyId?: string;
   SurveyTypeId?: number;
   StatusId: number;
   Title?: string;
@@ -62,8 +62,8 @@ export interface Survey {
 
 export interface SurveyCreate {
   SurveyNumber: string;
-  CustomerId?: number;
-  PropertyId?: number;
+  CustomerId?: string;
+  PropertyId?: string;
   SurveyTypeId?: number;
   StatusId: number;
   Title?: string;

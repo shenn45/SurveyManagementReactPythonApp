@@ -1,0 +1,16 @@
+{
+  "query": "mutation CreateProperty($input: PropertyInput!) { createProperty(input: $input) { property { PropertyId PropertyCode PropertyName District Section Block Lot } } }",
+  "variables": {
+    "input": {
+      "PropertyCode": "PROP003",
+      "PropertyName": "Test Property 3",
+      "PropertyDescription": "Test Description 3",
+      "OwnerName": "Bob Smith",
+      "District": "District1",
+      "Section": "Section1",
+      "Block": "Block1",
+      "Lot": "Lot1",
+      "IsActive": true
+    }
+  }
+}

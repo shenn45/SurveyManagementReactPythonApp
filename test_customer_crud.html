@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer CRUD Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        button { margin: 5px; padding: 10px; }
+        textarea { width: 100%; height: 200px; }
+        .result { margin-top: 10px; padding: 10px; background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>Customer CRUD Test</h1>
+    
+    <div class="section">
+        <h2>1. Create Customer</h2>
+        <button onclick="createCustomer()">Create Customer</button>
+        <div id="createResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>2. List Customers</h2>
+        <button onclick="listCustomers()">List Customers</button>
+        <div id="listResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>3. Update Customer</h2>
+        <input type="text" id="updateCustomerId" placeholder="Customer ID" style="width: 300px;">
+        <button onclick="updateCustomer()">Update Customer</button>
+        <div id="updateResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>4. Delete Customer</h2>
+        <input type="text" id="deleteCustomerId" placeholder="Customer ID" style="width: 300px;">
+        <button onclick="deleteCustomer()">Delete Customer (Soft Delete)</button>
+        <div id="deleteResult" class="result"></div>
+    </div>
+
+    <script>
+        const GRAPHQL_URL = 'http://localhost:8000/graphql';
+        
+        async function graphqlRequest(query, variables = {}) {
+            try {
+                const response = await fetch(GRAPHQL_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query, variables })
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('GraphQL request error:', error);
+                return { errors: [error.message] };
+            }
+        }
+        
+        async function createCustomer() {
+            const mutation = `
+                mutation {
+                    createCustomer(input: {
+                        CustomerCode: "TEST${Math.floor(Math.random() * 1000)}"
+                        CompanyName: "Test Company ${new Date().getTime()}"
+                        ContactFirstName: "John"
+                        ContactLastName: "Doe"
+                        Email: "john.doe@test.com"
+                        Phone: "555-1234"
+                        IsActive: true
+                    }) {
+                        customer {
+                            CustomerId
+                            CustomerCode
+                            CompanyName
+                            ContactFirstName
+                            ContactLastName
+                            Email
+                            Phone
+                            IsActive
+                            CreatedDate
+                        }
+                    }
+                }
+            `;
+            
+            const result = await graphqlRequest(mutation);
+            document.getElementById('createResult').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+        }
+        
+        async function listCustomers() {
+            const query = `
+                query {
+                    customers {
+                        customers {
+                            CustomerId
+                            CustomerCode
+                            CompanyName
+                            ContactFirstName
+                            ContactLastName
+                            Email
+                            Phone
+                            IsActive
+                            CreatedDate
+                        }
+                    }
+                }
+            `;
+            
+            const result = await graphqlRequest(query);
+            document.getElementById('listResult').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+        }
+        
+        async function updateCustomer() {
+            const customerId = document.getElementById('updateCustomerId').value;
+            if (!customerId) {
+                alert('Please enter a Customer ID');
+                return;
+            }
+            
+            const mutation = `
+                mutation {
+                    updateCustomer(customerId: "${customerId}", input: {
+                        CompanyName: "Updated Company Name"
+                        ContactFirstName: "Updated John"
+                        Email: "updated.john@test.com"
+                    }) {
+                        customer {
+                            CustomerId
+                            CustomerCode
+                            CompanyName
+                            ContactFirstName
+                            ContactLastName
+                            Email
+                            Phone
+                            IsActive
+                            ModifiedDate
+                        }
+                    }
+                }
+            `;
+            
+            const result = await graphqlRequest(mutation);
+            document.getElementById('updateResult').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+        }
+        
+        async function deleteCustomer() {
+            const customerId = document.getElementById('deleteCustomerId').value;
+            if (!customerId) {
+                alert('Please enter a Customer ID');
+                return;
+            }
+            
+            const mutation = `
+                mutation {
+                    deleteCustomer(customerId: "${customerId}") {
+                        success
+                    }
+                }
+            `;
+            
+            const result = await graphqlRequest(mutation);
+            document.getElementById('deleteResult').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+        }
+    </script>
+</body>
+</html>

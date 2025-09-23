@@ -28,7 +28,7 @@ export const GET_CUSTOMERS = gql`
 `;
 
 export const GET_CUSTOMER = gql`
-  query GetCustomer($customerId: Int!) {
+  query GetCustomer($customerId: String!) {
     customer(customerId: $customerId) {
       CustomerId
       CustomerCode
@@ -50,50 +50,56 @@ export const GET_CUSTOMER = gql`
 
 // Customer Mutations
 export const CREATE_CUSTOMER = gql`
-  mutation CreateCustomer($input: CustomerInput!) {
+  mutation CreateCustomer($input: CreateCustomerInput!) {
     createCustomer(input: $input) {
-      CustomerId
-      CustomerCode
-      CompanyName
-      ContactFirstName
-      ContactLastName
-      Email
-      Phone
-      Fax
-      Website
-      IsActive
-      CreatedDate
-      ModifiedDate
-      CreatedBy
-      ModifiedBy
+      customer {
+        CustomerId
+        CustomerCode
+        CompanyName
+        ContactFirstName
+        ContactLastName
+        Email
+        Phone
+        Fax
+        Website
+        IsActive
+        CreatedDate
+        ModifiedDate
+        CreatedBy
+        ModifiedBy
+      }
     }
   }
 `;
 
 export const UPDATE_CUSTOMER = gql`
-  mutation UpdateCustomer($customerId: Int!, $input: CustomerUpdateInput!) {
+  mutation UpdateCustomer($customerId: String!, $input: CustomerUpdateInput!) {
     updateCustomer(customerId: $customerId, input: $input) {
-      CustomerId
-      CustomerCode
-      CompanyName
-      ContactFirstName
-      ContactLastName
-      Email
-      Phone
-      Fax
-      Website
-      IsActive
-      CreatedDate
-      ModifiedDate
-      CreatedBy
-      ModifiedBy
+      customer {
+        CustomerId
+        CustomerCode
+        CompanyName
+        ContactFirstName
+        ContactLastName
+        Email
+        Phone
+        Fax
+        Website
+        IsActive
+        CreatedDate
+        ModifiedDate
+        CreatedBy
+        ModifiedBy
+      }
     }
   }
 `;
 
 export const DELETE_CUSTOMER = gql`
-  mutation DeleteCustomer($customerId: Int!) {
-    deleteCustomer(customerId: $customerId)
+  mutation DeleteCustomer($customerId: String!) {
+    deleteCustomer(customerId: $customerId) {
+      success
+    }
   }
 `;
 
@@ -135,7 +141,7 @@ export const GET_SURVEYS = gql`
 `;
 
 export const GET_SURVEY = gql`
-  query GetSurvey($surveyId: Int!) {
+  query GetSurvey($surveyId: String!) {
     survey(surveyId: $surveyId) {
       SurveyId
       SurveyNumber
@@ -198,7 +204,7 @@ export const CREATE_SURVEY = gql`
 `;
 
 export const UPDATE_SURVEY = gql`
-  mutation UpdateSurvey($surveyId: Int!, $input: SurveyUpdateInput!) {
+  mutation UpdateSurvey($surveyId: String!, $input: SurveyUpdateInput!) {
     updateSurvey(surveyId: $surveyId, input: $input) {
       SurveyId
       SurveyNumber
@@ -229,7 +235,7 @@ export const UPDATE_SURVEY = gql`
 `;
 
 export const DELETE_SURVEY = gql`
-  mutation DeleteSurvey($surveyId: Int!) {
+  mutation DeleteSurvey($surveyId: String!) {
     deleteSurvey(surveyId: $surveyId)
   }
 `;
@@ -351,7 +357,9 @@ export const UPDATE_PROPERTY = gql`
 
 export const DELETE_PROPERTY = gql`
   mutation DeleteProperty($propertyId: String!) {
-    deleteProperty(propertyId: $propertyId)
+    deleteProperty(propertyId: $propertyId) {
+      success
+    }
   }
 `;
 

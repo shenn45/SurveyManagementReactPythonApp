@@ -88,6 +88,14 @@ class Property(BaseModel):
     AddressId: Optional[str] = None
     TownshipId: Optional[str] = None
     IsActive: bool = True
+    # Legacy/Survey fields
+    SurveyPrimaryKey: Optional[int] = None
+    LegacyTax: Optional[str] = None
+    District: Optional[str] = None
+    Section: Optional[str] = None
+    Block: Optional[str] = None
+    Lot: Optional[str] = None
+    PropertyType: Optional[str] = None
     CreatedDate: datetime = Field(default_factory=datetime.utcnow)
     ModifiedDate: datetime = Field(default_factory=datetime.utcnow)
     CreatedBy: Optional[str] = None

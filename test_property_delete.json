@@ -1,0 +1,6 @@
+{
+  "query": "mutation DeleteProperty($propertyId: String!) { deleteProperty(propertyId: $propertyId) { success } }",
+  "variables": {
+    "propertyId": "bd3268f4-6edc-4b3c-a376-d150e824d8b7"
+  }
+}

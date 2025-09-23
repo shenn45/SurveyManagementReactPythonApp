@@ -328,6 +328,18 @@ class CreateCustomerInput(graphene.InputObjectType):
     Phone = String()
     Fax = String()
     Website = String()
+    IsActive = Boolean()
+
+class CustomerUpdateInput(graphene.InputObjectType):
+    CustomerCode = String()
+    CompanyName = String()
+    ContactFirstName = String()
+    ContactLastName = String()
+    Email = String()
+    Phone = String()
+    Fax = String()
+    Website = String()
+    IsActive = Boolean()
 
 class PropertyInput(graphene.InputObjectType):
     PropertyCode = String(required=True)
@@ -451,6 +463,37 @@ class CreateCustomerMutation(graphene.Mutation):
             print(f"Error creating customer: {e}")
             return CreateCustomerMutation(customer=None)
 
+class UpdateCustomerMutation(graphene.Mutation):
+    class Arguments:
+        customer_id = String(required=True)
+        input = CustomerUpdateInput(required=True)
+    
+    customer = Field(CustomerType)
+    
+    def mutate(self, info, customer_id, input):
+        try:
+            from schemas import CustomerUpdate
+            customer_data = CustomerUpdate(**input)
+            customer = crud.update_customer(customer_id=customer_id, customer=customer_data)
+            return UpdateCustomerMutation(customer=model_to_customer(customer))
+        except Exception as e:
+            print(f"Error updating customer: {e}")
+            return UpdateCustomerMutation(customer=None)
+
+class DeleteCustomerMutation(graphene.Mutation):
+    class Arguments:
+        customer_id = String(required=True)
+    
+    success = Boolean()
+    
+    def mutate(self, info, customer_id):
+        try:
+            crud.delete_customer(customer_id=customer_id)
+            return DeleteCustomerMutation(success=True)
+        except Exception as e:
+            print(f"Error deleting customer: {e}")
+            return DeleteCustomerMutation(success=False)
+
 class CreatePropertyMutation(graphene.Mutation):
     class Arguments:
         input = PropertyInput(required=True)
@@ -542,10 +585,27 @@ class DeleteTownshipMutation(graphene.Mutation):
             print(f"Error deleting township: {e}")
             return DeleteTownshipMutation(success=False)
 
+class DeletePropertyMutation(graphene.Mutation):
+    class Arguments:
+        propertyId = String(required=True)
+    
+    success = Boolean()
+    
+    def mutate(self, info, propertyId):
+        try:
+            success = crud.delete_property(property_id=propertyId)
+            return DeletePropertyMutation(success=success)
+        except Exception as e:
+            print(f"Error deleting property: {e}")
+            return DeletePropertyMutation(success=False)
+
 class Mutation(graphene.ObjectType):
-    create_customer = CreateCustomerMutation.Field()
+    createCustomer = CreateCustomerMutation.Field()
+    updateCustomer = UpdateCustomerMutation.Field()
+    deleteCustomer = DeleteCustomerMutation.Field()
     createProperty = CreatePropertyMutation.Field()
     updateProperty = UpdatePropertyMutation.Field()
+    deleteProperty = DeletePropertyMutation.Field()
     create_township = CreateTownshipMutation.Field()
     update_township = UpdateTownshipMutation.Field()
     delete_township = DeleteTownshipMutation.Field()

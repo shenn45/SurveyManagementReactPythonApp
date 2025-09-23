@@ -24,7 +24,7 @@ def serialize_item(item: dict) -> dict:
             serialized[key] = value.isoformat()
         elif isinstance(value, Decimal):
             serialized[key] = float(value)
-        else:
+        elif value is not None:  # Only skip None values
             serialized[key] = value
     return serialized
 
@@ -400,7 +400,8 @@ def create_property(property: schemas.PropertyCreate) -> Optional[Property]:
     """Create a new property"""
     table = get_table('Properties')
     
-    property_data = property.dict()
+    # Include all fields, even those with None values
+    property_data = property.dict(exclude_unset=False)
     property_data['PropertyId'] = str(uuid.uuid4())
     property_data['CreatedDate'] = datetime.utcnow()
     property_data['ModifiedDate'] = datetime.utcnow()
@@ -439,6 +440,21 @@ def update_property(property_id: str, property: schemas.PropertyUpdate) -> Optio
     except ClientError as e:
         print(f"Error updating property: {e}")
         return None
+
+def delete_property(property_id: str) -> bool:
+    """Delete a property"""
+    table = get_table('Properties')
+    
+    try:
+        response = table.delete_item(
+            Key={'PropertyId': property_id},
+            ReturnValues='ALL_OLD'
+        )
+        # Check if the item existed before deletion
+        return 'Attributes' in response
+    except ClientError as e:
+        print(f"Error deleting property: {e}")
+        return False
 
 # Survey Type CRUD
 def get_survey_types() -> List[SurveyType]:
