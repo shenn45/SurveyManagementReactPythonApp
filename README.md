@@ -16,37 +16,23 @@ This script will:
 - Install all dependencies
 - Set up the project structure
 
-### Legacy Setup Scripts
-```powershell
-# Windows PowerShell (legacy)
-.\setup.ps1
+### After Setup
+0. **Activate Venv if not already activated from previous setup**
+   venv/Scripts/Activate.ps1
 
-# Windows Batch
-setup.bat
+1. **Run Local Dynamo DB** 
+   python -m moto.server -p 8001 -H 0.0.0.0
 
-# Linux/Mac
-chmod +x setup.sh && ./setup.sh
-```
-
-### After Automated Setup
-
-1. **Configure AWS credentials** (see `DYNAMODB_MIGRATION.md` for details)
 2. **Create DynamoDB tables**:
-   ```bash
-   cd backend
-   python create_tables.py create
-   ```
-3. **Start the backend**:
-   ```bash
-   python main.py
-   ```
-4. **Start the frontend** (in a new terminal):
-   ```bash
-   cd frontend
-   npm install && npm start
-   ```
+   python setup_tables.py
 
----
+3. **Start the backend from the venv**:
+   python main.py
+
+4. **Start the frontend** (in a new terminal):
+   cd frontend
+   npm install
+   npm start
 
 ## Project Structure
 
