@@ -32,8 +32,8 @@ export interface Survey {
   SurveyNumber: string;
   CustomerId?: string;
   PropertyId?: string;
-  SurveyTypeId?: number;
-  StatusId: number;
+  SurveyTypeId?: string;
+  StatusId?: string;
   Title?: string;
   Description?: string;
   PurposeCode?: string;
@@ -64,8 +64,8 @@ export interface SurveyCreate {
   SurveyNumber: string;
   CustomerId?: string;
   PropertyId?: string;
-  SurveyTypeId?: number;
-  StatusId: number;
+  SurveyTypeId?: string;
+  StatusId?: string;
   Title?: string;
   Description?: string;
   PurposeCode?: string;
@@ -144,19 +144,16 @@ export interface Address {
 }
 
 export interface SurveyType {
-  SurveyTypeId: number;
-  TypeName: string;
-  TypeDescription?: string;
-  EstimatedDuration?: number;
-  BasePrice?: number;
+  SurveyTypeId: string;
+  SurveyTypeName: string;
+  Description?: string;
   IsActive: boolean;
 }
 
 export interface SurveyStatus {
-  StatusId: number;
-  StatusCode: string;
+  SurveyStatusId: string;
   StatusName: string;
-  SortOrder: number;
+  Description?: string;
   IsActive: boolean;
 }
 

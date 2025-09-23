@@ -40,6 +40,18 @@ class SurveyListResponse(ObjectType):
     page = Int()
     size = Int()
 
+class SurveyTypeType(ObjectType):
+    SurveyTypeId = String()
+    SurveyTypeName = String()
+    Description = String()
+    IsActive = Boolean()
+
+class SurveyStatusType(ObjectType):
+    SurveyStatusId = String()
+    StatusName = String()
+    Description = String()
+    IsActive = Boolean()
+
 class CustomerType(ObjectType):
     CustomerId = String()
     CustomerCode = String()
@@ -220,6 +232,28 @@ def model_to_township(township):
         ModifiedBy=getattr(township, 'ModifiedBy', '')
     )
 
+def model_to_survey_type(survey_type):
+    """Convert SurveyType model to GraphQL type"""
+    if not survey_type:
+        return None
+    return SurveyTypeType(
+        SurveyTypeId=getattr(survey_type, 'SurveyTypeId', ''),
+        SurveyTypeName=getattr(survey_type, 'SurveyTypeName', ''),
+        Description=getattr(survey_type, 'Description', ''),
+        IsActive=getattr(survey_type, 'IsActive', True)
+    )
+
+def model_to_survey_status(survey_status):
+    """Convert SurveyStatus model to GraphQL type"""
+    if not survey_status:
+        return None
+    return SurveyStatusType(
+        SurveyStatusId=getattr(survey_status, 'SurveyStatusId', ''),
+        StatusName=getattr(survey_status, 'StatusName', ''),
+        Description=getattr(survey_status, 'Description', ''),
+        IsActive=getattr(survey_status, 'IsActive', True)
+    )
+
 class Query(ObjectType):
     surveys = Field(SurveyListResponse, skip=Int(default_value=0), limit=Int(default_value=100), search=String())
     survey = Field(SurveyType, surveyId=String(required=True))
@@ -229,6 +263,8 @@ class Query(ObjectType):
     property = Field(PropertyType, propertyId=String(required=True))
     townships = Field(TownshipListResponse, skip=Int(default_value=0), limit=Int(default_value=100), search=String())
     township = Field(TownshipType, townshipId=String(required=True))
+    surveyTypes = Field(List(SurveyTypeType))
+    surveyStatuses = Field(List(SurveyStatusType))
 
     def resolve_surveys(self, info, skip=0, limit=100, search=None):
         try:
@@ -317,6 +353,22 @@ class Query(ObjectType):
         except Exception as e:
             print(f"Error resolving township: {e}")
             return None
+
+    def resolve_surveyTypes(self, info):
+        try:
+            survey_types = crud.get_survey_types()
+            return [model_to_survey_type(st) for st in survey_types]
+        except Exception as e:
+            print(f"Error resolving survey types: {e}")
+            return []
+
+    def resolve_surveyStatuses(self, info):
+        try:
+            survey_statuses = crud.get_survey_statuses()
+            return [model_to_survey_status(ss) for ss in survey_statuses]
+        except Exception as e:
+            print(f"Error resolving survey statuses: {e}")
+            return []
 
 # Create simple schema with queries and mutations
 class CreateCustomerInput(graphene.InputObjectType):
@@ -446,6 +498,37 @@ class PropertyUpdateInput(graphene.InputObjectType):
     EnvironmentalConcerns = String()
     PreviousSurveys = String()
     Notes = String()
+
+class CreateSurveyTypeInput(graphene.InputObjectType):
+    SurveyTypeName = String(required=True)
+    Description = String()
+    IsActive = Boolean()
+
+class CreateSurveyStatusInput(graphene.InputObjectType):
+    StatusName = String(required=True)
+    Description = String()
+    IsActive = Boolean()
+
+class SurveyInput(graphene.InputObjectType):
+    SurveyNumber = String(required=True)
+    CustomerId = String()
+    PropertyId = String()
+    SurveyTypeId = String()
+    StatusId = String()
+    Title = String()
+    Description = String()
+    PurposeCode = String()
+    RequestDate = String()
+    ScheduledDate = String()
+    CompletedDate = String()
+    DeliveryDate = String()
+    DueDate = String()
+    QuotedPrice = Float()
+    FinalPrice = Float()
+    IsFieldworkComplete = Boolean()
+    IsDrawingComplete = Boolean()
+    IsScanned = Boolean()
+    IsDelivered = Boolean()
 
 class CreateCustomerMutation(graphene.Mutation):
     class Arguments:
@@ -599,6 +682,88 @@ class DeletePropertyMutation(graphene.Mutation):
             print(f"Error deleting property: {e}")
             return DeletePropertyMutation(success=False)
 
+class CreateSurveyTypeMutation(graphene.Mutation):
+    class Arguments:
+        input = CreateSurveyTypeInput(required=True)
+    
+    surveyType = Field(SurveyTypeType)
+    
+    def mutate(self, info, input):
+        try:
+            from models import SurveyType
+            # Convert GraphQL input to dictionary
+            input_dict = {
+                'SurveyTypeName': input.SurveyTypeName,
+                'Description': input.Description,
+                'IsActive': input.IsActive if input.IsActive is not None else True
+            }
+            survey_type_data = SurveyType(**input_dict)
+            survey_type = crud.create_survey_type(survey_type_data)
+            return CreateSurveyTypeMutation(surveyType=model_to_survey_type(survey_type))
+        except Exception as e:
+            print(f"Error creating survey type: {e}")
+            return CreateSurveyTypeMutation(surveyType=None)
+
+class CreateSurveyStatusMutation(graphene.Mutation):
+    class Arguments:
+        input = CreateSurveyStatusInput(required=True)
+    
+    surveyStatus = Field(SurveyStatusType)
+    
+    def mutate(self, info, input):
+        try:
+            from models import SurveyStatus
+            # Convert GraphQL input to dictionary
+            input_dict = {
+                'StatusName': input.StatusName,
+                'Description': input.Description,
+                'IsActive': input.IsActive if input.IsActive is not None else True
+            }
+            survey_status_data = SurveyStatus(**input_dict)
+            survey_status = crud.create_survey_status(survey_status_data)
+            return CreateSurveyStatusMutation(surveyStatus=model_to_survey_status(survey_status))
+        except Exception as e:
+            print(f"Error creating survey status: {e}")
+            return CreateSurveyStatusMutation(surveyStatus=None)
+
+class CreateSurveyMutation(graphene.Mutation):
+    class Arguments:
+        input = SurveyInput(required=True)
+    
+    survey = Field(SurveyType)
+    
+    def mutate(self, info, input):
+        try:
+            from schemas import SurveyCreate
+            # Convert GraphQL input to dictionary with proper field mapping
+            input_dict = {
+                'SurveyNumber': input.SurveyNumber,
+                'CustomerId': input.CustomerId,
+                'PropertyId': input.PropertyId,
+                'SurveyTypeId': input.SurveyTypeId,
+                'StatusId': input.StatusId,
+                'Title': input.Title,
+                'Description': input.Description,
+                'PurposeCode': input.PurposeCode,
+                'RequestDate': input.RequestDate,
+                'ScheduledDate': input.ScheduledDate,
+                'CompletedDate': input.CompletedDate,
+                'DeliveryDate': input.DeliveryDate,
+                'DueDate': input.DueDate,
+                'QuotedPrice': input.QuotedPrice,
+                'FinalPrice': input.FinalPrice,
+                'IsFieldworkComplete': input.IsFieldworkComplete or False,
+                'IsDrawingComplete': input.IsDrawingComplete or False,
+                'IsScanned': input.IsScanned or False,
+                'IsDelivered': input.IsDelivered or False,
+            }
+            survey_data = SurveyCreate(**input_dict)
+            survey = crud.create_survey(survey_data)
+            return CreateSurveyMutation(survey=model_to_survey(survey))
+        except Exception as e:
+            print(f"Error creating survey: {e}")
+            return CreateSurveyMutation(survey=None)
+
 class Mutation(graphene.ObjectType):
     createCustomer = CreateCustomerMutation.Field()
     updateCustomer = UpdateCustomerMutation.Field()
@@ -609,5 +774,8 @@ class Mutation(graphene.ObjectType):
     create_township = CreateTownshipMutation.Field()
     update_township = UpdateTownshipMutation.Field()
     delete_township = DeleteTownshipMutation.Field()
+    createSurvey = CreateSurveyMutation.Field()
+    createSurveyType = CreateSurveyTypeMutation.Field()
+    createSurveyStatus = CreateSurveyStatusMutation.Field()
 
 schema = graphene.Schema(query=Query, mutation=Mutation)

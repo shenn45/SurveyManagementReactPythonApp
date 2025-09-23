@@ -175,30 +175,32 @@ export const GET_SURVEY = gql`
 export const CREATE_SURVEY = gql`
   mutation CreateSurvey($input: SurveyInput!) {
     createSurvey(input: $input) {
-      SurveyId
-      SurveyNumber
-      CustomerId
-      PropertyId
-      SurveyTypeId
-      StatusId
-      Title
-      Description
-      PurposeCode
-      RequestDate
-      ScheduledDate
-      CompletedDate
-      DeliveryDate
-      DueDate
-      QuotedPrice
-      FinalPrice
-      IsFieldworkComplete
-      IsDrawingComplete
-      IsScanned
-      IsDelivered
-      CreatedDate
-      ModifiedDate
-      CreatedBy
-      ModifiedBy
+      survey {
+        SurveyId
+        SurveyNumber
+        CustomerId
+        PropertyId
+        SurveyTypeId
+        StatusId
+        Title
+        Description
+        PurposeCode
+        RequestDate
+        ScheduledDate
+        CompletedDate
+        DeliveryDate
+        DueDate
+        QuotedPrice
+        FinalPrice
+        IsFieldworkComplete
+        IsDrawingComplete
+        IsScanned
+        IsDelivered
+        CreatedDate
+        ModifiedDate
+        CreatedBy
+        ModifiedBy
+      }
     }
   }
 `;
@@ -368,10 +370,8 @@ export const GET_SURVEY_TYPES = gql`
   query GetSurveyTypes {
     surveyTypes {
       SurveyTypeId
-      TypeName
-      TypeDescription
-      EstimatedDuration
-      BasePrice
+      SurveyTypeName
+      Description
       IsActive
     }
   }
@@ -380,10 +380,9 @@ export const GET_SURVEY_TYPES = gql`
 export const GET_SURVEY_STATUSES = gql`
   query GetSurveyStatuses {
     surveyStatuses {
-      StatusId
-      StatusCode
+      SurveyStatusId
       StatusName
-      SortOrder
+      Description
       IsActive
     }
   }

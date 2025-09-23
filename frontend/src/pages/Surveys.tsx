@@ -24,8 +24,8 @@ export default function Surveys() {
     SurveyNumber: '',
     CustomerId: undefined,
     PropertyId: undefined,
-    SurveyTypeId: 0,
-    StatusId: 0,
+    SurveyTypeId: undefined,
+    StatusId: undefined,
     Title: '',
     Description: '',
     PurposeCode: '',
@@ -94,8 +94,8 @@ export default function Surveys() {
       SurveyNumber: '',
       CustomerId: undefined,
       PropertyId: undefined,
-      SurveyTypeId: 0,
-      StatusId: 0,
+      SurveyTypeId: undefined,
+      StatusId: undefined,
       Title: '',
       Description: '',
       PurposeCode: '',
@@ -226,7 +226,7 @@ export default function Surveys() {
                         {customersData?.customers.find(c => c.CustomerId === survey.CustomerId)?.CompanyName || 'Unknown'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {surveyStatuses?.find(s => s.StatusId === survey.StatusId)?.StatusName || 'Unknown'}
+                        {surveyStatuses?.find(s => s.SurveyStatusId === survey.StatusId)?.StatusName || 'Unknown'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {survey.RequestDate ? new Date(survey.RequestDate).toLocaleDateString() : '-'}
@@ -347,14 +347,14 @@ export default function Surveys() {
               <select
                 id="surveyTypeId"
                 required
-                value={formData.SurveyTypeId}
-                onChange={(e) => setFormData({ ...formData, SurveyTypeId: parseInt(e.target.value) })}
+                value={formData.SurveyTypeId || ''}
+                onChange={(e) => setFormData({ ...formData, SurveyTypeId: e.target.value || undefined })}
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               >
-                <option value={0}>Select a survey type...</option>
+                <option value="">Select a survey type...</option>
                 {surveyTypes?.map((type) => (
                   <option key={type.SurveyTypeId} value={type.SurveyTypeId}>
-                    {type.TypeName}
+                    {type.SurveyTypeName}
                   </option>
                 ))}
               </select>
@@ -366,13 +366,13 @@ export default function Surveys() {
               <select
                 id="statusId"
                 required
-                value={formData.StatusId}
-                onChange={(e) => setFormData({ ...formData, StatusId: parseInt(e.target.value) })}
+                value={formData.StatusId || ''}
+                onChange={(e) => setFormData({ ...formData, StatusId: e.target.value || undefined })}
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               >
-                <option value={0}>Select a status...</option>
+                <option value="">Select a status...</option>
                 {surveyStatuses?.map((status) => (
-                  <option key={status.StatusId} value={status.StatusId}>
+                  <option key={status.SurveyStatusId} value={status.SurveyStatusId}>
                     {status.StatusName}
                   </option>
                 ))}

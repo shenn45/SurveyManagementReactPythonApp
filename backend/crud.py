@@ -484,6 +484,34 @@ def get_survey_statuses() -> List[SurveyStatus]:
         print(f"Error getting survey statuses: {e}")
         return []
 
+def create_survey_type(survey_type: SurveyType) -> Optional[SurveyType]:
+    """Create a new survey type"""
+    table = get_table('SurveyTypes')
+    
+    try:
+        item_data = survey_type.dict()
+        serialized_data = serialize_item(item_data)
+        
+        table.put_item(Item=serialized_data)
+        return survey_type
+    except ClientError as e:
+        print(f"Error creating survey type: {e}")
+        return None
+
+def create_survey_status(survey_status: SurveyStatus) -> Optional[SurveyStatus]:
+    """Create a new survey status"""
+    table = get_table('SurveyStatuses')
+    
+    try:
+        item_data = survey_status.dict()
+        serialized_data = serialize_item(item_data)
+        
+        table.put_item(Item=serialized_data)
+        return survey_status
+    except ClientError as e:
+        print(f"Error creating survey status: {e}")
+        return None
+
 
 # Township CRUD
 def get_township(township_id: str) -> Optional[Township]:

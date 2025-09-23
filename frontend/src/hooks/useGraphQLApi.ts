@@ -156,7 +156,7 @@ export const useCreateSurvey = () => {
       },
       refetchQueries: [GET_SURVEYS],
     });
-    return (result.data as any).createSurvey;
+    return (result.data as any).createSurvey.survey;
   };
 
   return { create, loading, error };
