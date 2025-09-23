@@ -108,20 +108,34 @@ def get_customers(skip: int = 0, limit: int = 100, search: Optional[str] = None)
         return paginated_customers, total
     
     try:
+        # First, get the total count of all items
         if search:
             filter_expression = Attr('CompanyName').contains(search) | \
                               Attr('CustomerCode').contains(search) | \
                               Attr('Email').contains(search)
             
-            response = table.scan(
+            # Get total count with filter
+            count_response = table.scan(
                 FilterExpression=filter_expression,
-                Limit=limit + skip
+                Select='COUNT'
+            )
+            total = count_response.get('Count', 0)
+            
+            # Get paginated items with filter
+            response = table.scan(
+                FilterExpression=filter_expression
             )
         else:
-            response = table.scan(Limit=limit + skip)
+            # Get total count without filter
+            count_response = table.scan(Select='COUNT')
+            total = count_response.get('Count', 0)
+            
+            # Get all items without filter
+            response = table.scan()
         
         items = response.get('Items', [])
-        total = len(items)
+        
+        # Apply pagination to the results
         paginated_items = items[skip:skip + limit]
         
         customers = [Customer(**deserialize_item(item)) for item in paginated_items]
@@ -314,19 +328,33 @@ def get_surveys(skip: int = 0, limit: int = 100, search: Optional[str] = None) -
         return paginated_surveys, total
     
     try:
+        # First, get the total count of all items
         if search:
             filter_expression = Attr('SurveyNumber').contains(search) | \
                               Attr('Notes').contains(search)
             
-            response = table.scan(
+            # Get total count with filter
+            count_response = table.scan(
                 FilterExpression=filter_expression,
-                Limit=limit + skip
+                Select='COUNT'
+            )
+            total = count_response.get('Count', 0)
+            
+            # Get paginated items with filter
+            response = table.scan(
+                FilterExpression=filter_expression
             )
         else:
-            response = table.scan(Limit=limit + skip)
+            # Get total count without filter
+            count_response = table.scan(Select='COUNT')
+            total = count_response.get('Count', 0)
+            
+            # Get all items without filter
+            response = table.scan()
         
         items = response.get('Items', [])
-        total = len(items)
+        
+        # Apply pagination to the results
         paginated_items = items[skip:skip + limit]
         
         surveys = []
@@ -512,20 +540,34 @@ def get_properties(skip: int = 0, limit: int = 100, search: Optional[str] = None
         return paginated_properties, total
     
     try:
+        # First, get the total count of all items
         if search:
             filter_expression = Attr('PropertyName').contains(search) | \
                               Attr('PropertyCode').contains(search) | \
                               Attr('OwnerName').contains(search)
             
-            response = table.scan(
+            # Get total count with filter
+            count_response = table.scan(
                 FilterExpression=filter_expression,
-                Limit=limit + skip
+                Select='COUNT'
+            )
+            total = count_response.get('Count', 0)
+            
+            # Get paginated items with filter
+            response = table.scan(
+                FilterExpression=filter_expression
             )
         else:
-            response = table.scan(Limit=limit + skip)
+            # Get total count without filter
+            count_response = table.scan(Select='COUNT')
+            total = count_response.get('Count', 0)
+            
+            # Get all items without filter
+            response = table.scan()
         
         items = response.get('Items', [])
-        total = len(items)
+        
+        # Apply pagination to the results
         paginated_items = items[skip:skip + limit]
         
         properties = [Property(**deserialize_item(item)) for item in paginated_items]
