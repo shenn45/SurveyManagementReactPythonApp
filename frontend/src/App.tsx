@@ -7,6 +7,7 @@ import Customers from './pages/Customers';
 import Surveys from './pages/Surveys';
 import Properties from './pages/Properties';
 import Townships from './pages/Townships';
+import Board from './pages/Board';
 import { useCustomers, useSurveys, useProperties } from './hooks/useGraphQLApi';
 
 function Dashboard() {
@@ -94,6 +95,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/surveys" element={<Surveys />} />
+              <Route path="/board" element={<Board />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/properties" element={<Properties />} />
               <Route path="/townships" element={<Townships />} />

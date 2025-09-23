@@ -6,12 +6,101 @@ Seeds the database with mock survey types and survey statuses
 
 import sys
 import os
+import boto3
+from boto3.dynamodb.conditions import Attr
+from botocore.exceptions import ClientError
 
 # Add the backend directory to the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from models import SurveyType, SurveyStatus
 import crud
+
+def get_local_dynamodb():
+    """Get a direct connection to local moto DynamoDB"""
+    return boto3.resource(
+        'dynamodb',
+        endpoint_url='http://localhost:8001',
+        aws_access_key_id='fake_access_key',
+        aws_secret_access_key='fake_secret_key',
+        region_name='us-east-1'
+    )
+
+def get_survey_types_direct():
+    """Get survey types directly from local DynamoDB"""
+    try:
+        dynamodb = get_local_dynamodb()
+        table = dynamodb.Table('SurveyTypes')
+        response = table.scan(
+            FilterExpression=Attr('IsActive').eq(True)
+        )
+        return response.get('Items', [])
+    except Exception as e:
+        print(f"Error getting survey types: {e}")
+        return []
+
+def get_survey_statuses_direct():
+    """Get survey statuses directly from local DynamoDB"""
+    try:
+        dynamodb = get_local_dynamodb()
+        table = dynamodb.Table('SurveyStatuses')
+        response = table.scan(
+            FilterExpression=Attr('IsActive').eq(True)
+        )
+        return response.get('Items', [])
+    except Exception as e:
+        print(f"Error getting survey statuses: {e}")
+        return []
+
+def create_survey_type_direct(survey_type_data):
+    """Create survey type directly in local DynamoDB"""
+    try:
+        import uuid
+        from datetime import datetime
+        
+        dynamodb = get_local_dynamodb()
+        table = dynamodb.Table('SurveyTypes')
+        
+        # Prepare the item
+        item = {
+            'SurveyTypeId': str(uuid.uuid4()),
+            'SurveyTypeName': survey_type_data['SurveyTypeName'],
+            'Description': survey_type_data.get('Description', ''),
+            'IsActive': True,
+            'CreatedDate': datetime.utcnow().isoformat(),
+            'ModifiedDate': datetime.utcnow().isoformat()
+        }
+        
+        table.put_item(Item=item)
+        return True
+    except Exception as e:
+        print(f"Error creating survey type: {e}")
+        return False
+
+def create_survey_status_direct(survey_status_data):
+    """Create survey status directly in local DynamoDB"""
+    try:
+        import uuid
+        from datetime import datetime
+        
+        dynamodb = get_local_dynamodb()
+        table = dynamodb.Table('SurveyStatuses')
+        
+        # Prepare the item
+        item = {
+            'SurveyStatusId': str(uuid.uuid4()),
+            'StatusName': survey_status_data['StatusName'],
+            'Description': survey_status_data.get('Description', ''),
+            'IsActive': True,
+            'CreatedDate': datetime.utcnow().isoformat(),
+            'ModifiedDate': datetime.utcnow().isoformat()
+        }
+        
+        table.put_item(Item=item)
+        return True
+    except Exception as e:
+        print(f"Error creating survey status: {e}")
+        return False
 
 def seed_survey_types():
     """Seed the database with common survey types"""
@@ -58,12 +147,11 @@ def seed_survey_types():
     created_count = 0
     
     for survey_type_data in survey_types:
-        survey_type = SurveyType(**survey_type_data)
-        result = crud.create_survey_type(survey_type)
+        result = create_survey_type_direct(survey_type_data)
         
         if result:
             created_count += 1
-            print(f"✓ Created survey type: {survey_type.SurveyTypeName}")
+            print(f"✓ Created survey type: {survey_type_data['SurveyTypeName']}")
         else:
             print(f"✗ Failed to create survey type: {survey_type_data['SurveyTypeName']}")
     
@@ -119,12 +207,11 @@ def seed_survey_statuses():
     created_count = 0
     
     for survey_status_data in survey_statuses:
-        survey_status = SurveyStatus(**survey_status_data)
-        result = crud.create_survey_status(survey_status)
+        result = create_survey_status_direct(survey_status_data)
         
         if result:
             created_count += 1
-            print(f"✓ Created survey status: {survey_status.StatusName}")
+            print(f"✓ Created survey status: {survey_status_data['StatusName']}")
         else:
             print(f"✗ Failed to create survey status: {survey_status_data['StatusName']}")
     
@@ -133,8 +220,8 @@ def seed_survey_statuses():
 
 def check_existing_data():
     """Check if there's already data in the tables"""
-    existing_types = crud.get_survey_types()
-    existing_statuses = crud.get_survey_statuses()
+    existing_types = get_survey_types_direct()
+    existing_statuses = get_survey_statuses_direct()
     
     print(f"Existing survey types: {len(existing_types)}")
     print(f"Existing survey statuses: {len(existing_statuses)}")

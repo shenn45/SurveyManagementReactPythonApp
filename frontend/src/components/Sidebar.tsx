@@ -5,12 +5,14 @@ import {
   DocumentTextIcon, 
   HomeIcon,
   UsersIcon,
-  MapIcon
+  MapIcon,
+  Squares2X2Icon
 } from '@heroicons/react/24/outline';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
   { name: 'Surveys', href: '/surveys', icon: DocumentTextIcon },
+  { name: 'Board', href: '/board', icon: Squares2X2Icon },
   { name: 'Customers', href: '/customers', icon: UsersIcon },
   { name: 'Properties', href: '/properties', icon: BuildingOfficeIcon },
   { name: 'Townships', href: '/townships', icon: MapIcon },

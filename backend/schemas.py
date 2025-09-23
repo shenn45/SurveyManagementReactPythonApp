@@ -246,8 +246,29 @@ class SurveyBase(BaseModel):
 class SurveyCreate(SurveyBase):
     pass
 
-class SurveyUpdate(SurveyBase):
-    pass
+class SurveyUpdate(BaseModel):
+    SurveyNumber: Optional[str] = None
+    CustomerId: Optional[str] = None
+    PropertyId: Optional[str] = None
+    SurveyTypeId: Optional[str] = None
+    StatusId: Optional[str] = None
+    Title: Optional[str] = None
+    Description: Optional[str] = None
+    PurposeCode: Optional[str] = None
+    RequestDate: Optional[datetime] = None
+    ScheduledDate: Optional[datetime] = None
+    CompletedDate: Optional[datetime] = None
+    DeliveryDate: Optional[datetime] = None
+    DueDate: Optional[datetime] = None
+    QuotedPrice: Optional[Decimal] = None
+    FinalPrice: Optional[Decimal] = None
+    EstimatedCost: Optional[Decimal] = None
+    ActualCost: Optional[Decimal] = None
+    Notes: Optional[str] = None
+    IsFieldworkComplete: Optional[bool] = None
+    IsDrawingComplete: Optional[bool] = None
+    IsScanned: Optional[bool] = None
+    IsDelivered: Optional[bool] = None
 
 class Survey(SurveyBase):
     SurveyId: str
