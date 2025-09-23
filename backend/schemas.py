@@ -144,8 +144,11 @@ class SurveyStatusBase(BaseModel):
 class SurveyStatusCreate(SurveyStatusBase):
     pass
 
-class SurveyStatusUpdate(SurveyStatusBase):
-    pass
+class SurveyStatusUpdate(BaseModel):
+    StatusCode: Optional[str] = None
+    StatusName: Optional[str] = None
+    SortOrder: Optional[int] = None
+    IsActive: Optional[bool] = None
 
 class SurveyStatus(SurveyStatusBase):
     StatusId: int
