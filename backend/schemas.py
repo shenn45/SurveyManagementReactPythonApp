@@ -221,10 +221,10 @@ class SurveyDocument(SurveyDocumentBase):
 # Survey Schemas
 class SurveyBase(BaseModel):
     SurveyNumber: str
-    CustomerId: Optional[int] = None
-    PropertyId: Optional[int] = None
-    SurveyTypeId: Optional[int] = None
-    StatusId: int
+    CustomerId: Optional[str] = None
+    PropertyId: Optional[str] = None
+    SurveyTypeId: Optional[str] = None
+    StatusId: Optional[str] = None
     Title: Optional[str] = None
     Description: Optional[str] = None
     PurposeCode: Optional[str] = None
@@ -235,6 +235,9 @@ class SurveyBase(BaseModel):
     DueDate: Optional[datetime] = None
     QuotedPrice: Optional[Decimal] = None
     FinalPrice: Optional[Decimal] = None
+    EstimatedCost: Optional[Decimal] = None
+    ActualCost: Optional[Decimal] = None
+    Notes: Optional[str] = None
     IsFieldworkComplete: bool = False
     IsDrawingComplete: bool = False
     IsScanned: bool = False
@@ -247,7 +250,7 @@ class SurveyUpdate(SurveyBase):
     pass
 
 class Survey(SurveyBase):
-    SurveyId: int
+    SurveyId: str
     CreatedDate: datetime
     ModifiedDate: datetime
     CreatedBy: Optional[str] = None

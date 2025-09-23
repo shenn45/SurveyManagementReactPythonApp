@@ -45,10 +45,10 @@ class DynamoDBConnection:
                 # Test the connection by trying to list tables
                 try:
                     list(self._dynamodb.tables.all())
-                    print("✅ Successfully connected to local DynamoDB")
+                    print("Successfully connected to local DynamoDB")
                 except Exception as conn_error:
-                    print(f"❌ Failed to connect to local DynamoDB: {conn_error}")
-                    print("💡 Using development mode with mock data instead")
+                    print(f"Failed to connect to local DynamoDB: {conn_error}")
+                    print("Using development mode with mock data instead")
                     self._dynamodb = None
             else:
                 # Use AWS DynamoDB

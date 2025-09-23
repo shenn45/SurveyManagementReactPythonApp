@@ -208,30 +208,32 @@ export const CREATE_SURVEY = gql`
 export const UPDATE_SURVEY = gql`
   mutation UpdateSurvey($surveyId: String!, $input: SurveyUpdateInput!) {
     updateSurvey(surveyId: $surveyId, input: $input) {
-      SurveyId
-      SurveyNumber
-      CustomerId
-      PropertyId
-      SurveyTypeId
-      StatusId
-      Title
-      Description
-      PurposeCode
-      RequestDate
-      ScheduledDate
-      CompletedDate
-      DeliveryDate
-      DueDate
-      QuotedPrice
-      FinalPrice
-      IsFieldworkComplete
-      IsDrawingComplete
-      IsScanned
-      IsDelivered
-      CreatedDate
-      ModifiedDate
-      CreatedBy
-      ModifiedBy
+      survey {
+        SurveyId
+        SurveyNumber
+        CustomerId
+        PropertyId
+        SurveyTypeId
+        StatusId
+        Title
+        Description
+        PurposeCode
+        RequestDate
+        ScheduledDate
+        CompletedDate
+        DeliveryDate
+        DueDate
+        QuotedPrice
+        FinalPrice
+        IsFieldworkComplete
+        IsDrawingComplete
+        IsScanned
+        IsDelivered
+        CreatedDate
+        ModifiedDate
+        CreatedBy
+        ModifiedBy
+      }
     }
   }
 `;

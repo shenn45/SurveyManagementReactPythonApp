@@ -173,7 +173,7 @@ export const useUpdateSurvey = () => {
       },
       refetchQueries: [GET_SURVEYS, GET_SURVEY],
     });
-    return (result.data as any).updateSurvey;
+    return (result.data as any).updateSurvey.survey;
   };
 
   return { update, loading, error };

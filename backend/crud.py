@@ -23,7 +23,8 @@ def serialize_item(item: dict) -> dict:
         if isinstance(value, datetime):
             serialized[key] = value.isoformat()
         elif isinstance(value, Decimal):
-            serialized[key] = float(value)
+            # Keep Decimal as Decimal for DynamoDB - don't convert to float
+            serialized[key] = value
         elif value is not None:  # Only skip None values
             serialized[key] = value
     return serialized
@@ -40,6 +41,9 @@ def deserialize_item(item: dict) -> dict:
                 deserialized[key] = datetime.fromisoformat(value)
             except ValueError:
                 deserialized[key] = value
+        elif isinstance(value, float) and key in ['QuotedPrice', 'FinalPrice', 'EstimatedCost', 'ActualCost']:
+            # Convert float values back to Decimal for price fields
+            deserialized[key] = Decimal(str(value))
         else:
             deserialized[key] = value
     return deserialized
@@ -200,6 +204,55 @@ def delete_customer(customer_id: str) -> bool:
         print(f"Error deleting customer: {e}")
         return False
 
+def convert_survey_data(item_data: dict) -> dict:
+    """Convert DynamoDB survey data to model format"""
+    # Handle field name mapping - convert StatusId to SurveyStatusId for the model
+    if 'StatusId' in item_data and 'SurveyStatusId' not in item_data:
+        item_data['SurveyStatusId'] = item_data['StatusId']
+        # Don't delete StatusId yet, we might need it for GraphQL responses
+    
+    # Convert Decimal objects to appropriate types
+    for key, value in item_data.items():
+        if isinstance(value, Decimal):
+            # For price/cost fields, keep as Decimal for the model
+            if key in ['QuotedPrice', 'FinalPrice', 'EstimatedCost', 'ActualCost']:
+                # Keep as Decimal - no conversion needed
+                pass
+            else:
+                # For ID fields that should be strings
+                item_data[key] = str(value)
+    
+    # Convert string dates to datetime objects for datetime fields
+    datetime_fields = ['CreatedDate', 'ModifiedDate', 'RequestDate', 'CompletedDate', 'ScheduledDate', 'DeliveryDate', 'DueDate']
+    for field in datetime_fields:
+        if field in item_data and isinstance(item_data[field], str):
+            try:
+                # Parse ISO format datetime strings
+                item_data[field] = datetime.fromisoformat(item_data[field].replace('Z', '+00:00'))
+            except ValueError:
+                # If parsing fails, skip the field or use default
+                if field in ['CreatedDate', 'ModifiedDate', 'RequestDate']:
+                    item_data[field] = datetime.utcnow()
+                else:
+                    item_data[field] = None
+    
+    # Ensure required fields have default values if missing
+    required_fields = {
+        'CustomerId': str(uuid.uuid4()),
+        'PropertyId': str(uuid.uuid4()),
+        'SurveyTypeId': str(uuid.uuid4()),
+        'SurveyStatusId': str(uuid.uuid4()),  # Use SurveyStatusId for the model
+        'SurveyNumber': f"SURVEY-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
+        'CreatedDate': datetime.utcnow(),
+        'ModifiedDate': datetime.utcnow(),
+    }
+    
+    for field, default_value in required_fields.items():
+        if field not in item_data or item_data[field] is None:
+            item_data[field] = default_value
+    
+    return item_data
+
 # Survey CRUD
 def get_survey(survey_id: str) -> Optional[Survey]:
     """Get a single survey by ID"""
@@ -208,10 +261,16 @@ def get_survey(survey_id: str) -> Optional[Survey]:
         response = table.get_item(Key={'SurveyId': survey_id})
         item = response.get('Item')
         if item:
-            return Survey(**deserialize_item(item))
+            item_data = deserialize_item(item)
+            item_data = convert_survey_data(item_data)
+            return Survey(**item_data)
         return None
     except ClientError as e:
         print(f"Error getting survey: {e}")
+        return None
+    except Exception as e:
+        print(f"Error creating Survey model: {e}")
+        print(f"Survey data: {item_data if 'item_data' in locals() else 'N/A'}")
         return None
 
 def get_surveys(skip: int = 0, limit: int = 100, search: Optional[str] = None) -> tuple[List[Survey], int]:
@@ -270,7 +329,19 @@ def get_surveys(skip: int = 0, limit: int = 100, search: Optional[str] = None) -
         total = len(items)
         paginated_items = items[skip:skip + limit]
         
-        surveys = [Survey(**deserialize_item(item)) for item in paginated_items]
+        surveys = []
+        for item in paginated_items:
+            try:
+                # Deserialize and convert data
+                item_data = deserialize_item(item)
+                item_data = convert_survey_data(item_data)
+                
+                survey = Survey(**item_data)
+                surveys.append(survey)
+            except Exception as e:
+                print(f"Error creating survey from item {item}: {e}")
+                continue
+                
         return surveys, total
         
     except ClientError as e:
@@ -287,12 +358,80 @@ def create_survey(survey: schemas.SurveyCreate) -> Optional[Survey]:
     survey_data['ModifiedDate'] = datetime.utcnow()
     survey_data['RequestDate'] = datetime.utcnow()
     
+    # Convert float values to Decimal for DynamoDB compatibility
+    decimal_fields = ['QuotedPrice', 'FinalPrice', 'EstimatedCost', 'ActualCost']
+    for field in decimal_fields:
+        if field in survey_data and isinstance(survey_data[field], (int, float)):
+            survey_data[field] = Decimal(str(survey_data[field]))
+    
     try:
         serialized_data = serialize_item(survey_data)
         table.put_item(Item=serialized_data)
         return Survey(**survey_data)
     except ClientError as e:
         print(f"Error creating survey: {e}")
+        return None
+
+def update_survey(survey_id: str, survey: schemas.SurveyUpdate) -> Optional[Survey]:
+    """Update an existing survey"""
+    table = get_table('Surveys')
+    
+    # First check if survey exists
+    existing_survey = get_survey(survey_id)
+    if not existing_survey:
+        return None
+    
+    # Get only the fields that were provided (non-None values)
+    survey_data = survey.dict(exclude_unset=True)
+    survey_data['ModifiedDate'] = datetime.utcnow()
+    
+    # Handle field name mapping - convert StatusId to SurveyStatusId for DynamoDB
+    if 'StatusId' in survey_data:
+        survey_data['SurveyStatusId'] = survey_data.pop('StatusId')
+    
+    # Convert float values to Decimal for DynamoDB compatibility
+    decimal_fields = ['QuotedPrice', 'FinalPrice', 'EstimatedCost', 'ActualCost']
+    for field in decimal_fields:
+        if field in survey_data and isinstance(survey_data[field], (int, float)):
+            survey_data[field] = Decimal(str(survey_data[field]))
+    
+    # Build update expression
+    update_expression = "SET "
+    expression_attribute_names = {}
+    expression_attribute_values = {}
+    
+    for key, value in survey_data.items():
+        if key != 'SurveyId':  # Don't update the primary key
+            update_expression += f"#{key} = :{key}, "
+            expression_attribute_names[f"#{key}"] = key
+            expression_attribute_values[f":{key}"] = value
+    
+    # Remove trailing comma and space
+    update_expression = update_expression.rstrip(", ")
+    
+    try:
+        serialized_values = serialize_item(expression_attribute_values)
+        response = table.update_item(
+            Key={'SurveyId': survey_id},
+            UpdateExpression=update_expression,
+            ExpressionAttributeNames=expression_attribute_names,
+            ExpressionAttributeValues=serialized_values,
+            ReturnValues="ALL_NEW"
+        )
+        
+        if response.get('Attributes'):
+            updated_data = deserialize_item(response['Attributes'])
+            print(f"After deserialize_item: {[(k, type(v), v) for k, v in updated_data.items() if k in ['QuotedPrice', 'FinalPrice', 'EstimatedCost', 'ActualCost']]}")
+            updated_data = convert_survey_data(updated_data)
+            print(f"After convert_survey_data: {[(k, type(v), v) for k, v in updated_data.items() if k in ['QuotedPrice', 'FinalPrice', 'EstimatedCost', 'ActualCost']]}")
+            print(f"All data types before Survey creation: {[(k, type(v)) for k, v in updated_data.items()]}")
+            return Survey(**updated_data)
+        return None
+    except ClientError as e:
+        print(f"Error updating survey: {e}")
+        return None
+    except Exception as e:
+        print(f"Error creating updated Survey model: {e}")
         return None
 
 # Property CRUD

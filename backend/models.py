@@ -135,11 +135,23 @@ class Survey(BaseModel):
     CustomerId: str
     PropertyId: str
     SurveyStatusId: str
+    Title: Optional[str] = None
+    Description: Optional[str] = None
+    PurposeCode: Optional[str] = None
+    QuotedPrice: Optional[Decimal] = None
+    FinalPrice: Optional[Decimal] = None
     EstimatedCost: Optional[Decimal] = None
     ActualCost: Optional[Decimal] = None
-    RequestDate: datetime = Field(default_factory=datetime.utcnow)
-    CompletedDate: Optional[datetime] = None
     Notes: Optional[str] = None
+    RequestDate: datetime = Field(default_factory=datetime.utcnow)
+    ScheduledDate: Optional[datetime] = None
+    CompletedDate: Optional[datetime] = None
+    DeliveryDate: Optional[datetime] = None
+    DueDate: Optional[datetime] = None
+    IsFieldworkComplete: bool = False
+    IsDrawingComplete: bool = False
+    IsScanned: bool = False
+    IsDelivered: bool = False
     SurveyorNotes: Optional[str] = None
     IsActive: bool = True
     CreatedDate: datetime = Field(default_factory=datetime.utcnow)
