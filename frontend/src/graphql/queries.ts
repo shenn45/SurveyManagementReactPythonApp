@@ -390,6 +390,32 @@ export const GET_SURVEY_STATUSES = gql`
   }
 `;
 
+export const CREATE_SURVEY_STATUS = gql`
+  mutation CreateSurveyStatus($input: CreateSurveyStatusInput!) {
+    createSurveyStatus(input: $input) {
+      surveyStatus {
+        SurveyStatusId
+        StatusName
+        Description
+        IsActive
+      }
+    }
+  }
+`;
+
+export const UPDATE_SURVEY_STATUS = gql`
+  mutation UpdateSurveyStatus($surveyStatusId: String!, $input: UpdateSurveyStatusInput!) {
+    updateSurveyStatus(surveyStatusId: $surveyStatusId, input: $input) {
+      surveyStatus {
+        SurveyStatusId
+        StatusName
+        Description
+        IsActive
+      }
+    }
+  }
+`;
+
 export const GET_TOWNSHIPS = gql`
   query GetTownships($skip: Int = 0, $limit: Int = 100, $search: String) {
     townships(skip: $skip, limit: $limit, search: $search) {

@@ -17,6 +17,8 @@ import {
   DELETE_PROPERTY,
   GET_SURVEY_TYPES,
   GET_SURVEY_STATUSES,
+  CREATE_SURVEY_STATUS,
+  UPDATE_SURVEY_STATUS,
   GET_TOWNSHIPS,
   GET_TOWNSHIP,
   CREATE_TOWNSHIP,
@@ -171,7 +173,8 @@ export const useUpdateSurvey = () => {
         surveyId: id,
         input: survey,
       },
-      refetchQueries: [GET_SURVEYS, GET_SURVEY],
+      // Remove automatic refetch to prevent page reloads
+      // refetchQueries: [GET_SURVEYS, GET_SURVEY],
     });
     return (result.data as any).updateSurvey.survey;
   };
@@ -284,13 +287,42 @@ export const useSurveyTypes = () => {
 };
 
 export const useSurveyStatuses = () => {
-  const { data, loading, error } = useQuery(GET_SURVEY_STATUSES);
+  const { data, loading, error, refetch } = useQuery(GET_SURVEY_STATUSES);
 
   return {
     data: (data as any)?.surveyStatuses as SurveyStatus[] | undefined,
     loading,
     error,
+    refetch,
   };
+};
+
+export const useCreateSurveyStatus = () => {
+  const [createSurveyStatus, { loading, error }] = useMutation(CREATE_SURVEY_STATUS);
+
+  const create = async (input: { StatusName: string; Description?: string; IsActive?: boolean }): Promise<SurveyStatus> => {
+    const result = await createSurveyStatus({
+      variables: { input },
+      refetchQueries: [GET_SURVEY_STATUSES],
+    });
+    return (result.data as any).createSurveyStatus.surveyStatus;
+  };
+
+  return { create, loading, error };
+};
+
+export const useUpdateSurveyStatus = () => {
+  const [updateSurveyStatus, { loading, error }] = useMutation(UPDATE_SURVEY_STATUS);
+
+  const update = async (surveyStatusId: string, input: { StatusName?: string; Description?: string; IsActive?: boolean }): Promise<SurveyStatus> => {
+    const result = await updateSurveyStatus({
+      variables: { surveyStatusId, input },
+      refetchQueries: [GET_SURVEY_STATUSES],
+    });
+    return (result.data as any).updateSurveyStatus.surveyStatus;
+  };
+
+  return { update, loading, error };
 };
 
 export const useTownships = (page = 1, size = 100, search?: string) => {

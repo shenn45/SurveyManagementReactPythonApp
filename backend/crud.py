@@ -694,6 +694,59 @@ def create_survey_status(survey_status: SurveyStatus) -> Optional[SurveyStatus]:
         return None
 
 
+def update_survey_status(survey_status_id: str, survey_status_update: schemas.SurveyStatusUpdate) -> Optional[SurveyStatus]:
+    """Update an existing survey status"""
+    table = get_table('SurveyStatuses')
+    try:
+        # First, get the existing survey status
+        response = table.get_item(Key={'SurveyStatusId': survey_status_id})
+        if 'Item' not in response:
+            return None
+        
+        # Update the fields
+        update_data = survey_status_update.dict(exclude_unset=True)
+        
+        # Build update expression
+        update_expression = "SET "
+        expression_attribute_values = {}
+        expression_attribute_names = {}
+        
+        for key, value in update_data.items():
+            if key != 'SurveyStatusId':  # Don't update the ID
+                # Handle reserved keywords
+                attr_name = f"#{key}"
+                attr_value = f":{key}"
+                expression_attribute_names[attr_name] = key
+                expression_attribute_values[attr_value] = value
+                update_expression += f"{attr_name} = {attr_value}, "
+        
+        # Remove trailing comma and space
+        update_expression = update_expression.rstrip(", ")
+        
+        # Add UpdatedDate
+        expression_attribute_names["#UpdatedDate"] = "UpdatedDate"
+        expression_attribute_values[":UpdatedDate"] = datetime.now().isoformat()
+        update_expression += ", #UpdatedDate = :UpdatedDate"
+        
+        # Update the item
+        response = table.update_item(
+            Key={'SurveyStatusId': survey_status_id},
+            UpdateExpression=update_expression,
+            ExpressionAttributeNames=expression_attribute_names,
+            ExpressionAttributeValues=expression_attribute_values,
+            ReturnValues="ALL_NEW"
+        )
+        
+        updated_item = response.get('Attributes')
+        if updated_item:
+            return SurveyStatus(**deserialize_item(updated_item))
+        return None
+        
+    except ClientError as e:
+        print(f"Error updating survey status {survey_status_id}: {e}")
+        return None
+
+
 # Township CRUD
 def get_township(township_id: str) -> Optional[Township]:
     """Get a single township by ID"""

@@ -1,5 +1,5 @@
 import graphene
-from graphene import ObjectType, List, Field, String, Int, Boolean, Float, DateTime
+from graphene import ObjectType, List, Field, String, Int, Boolean, Float, DateTime, InputObjectType
 from typing import Optional
 from datetime import datetime
 import uuid
@@ -788,6 +788,43 @@ class CreateSurveyStatusMutation(graphene.Mutation):
             print(f"Error creating survey status: {e}")
             return CreateSurveyStatusMutation(surveyStatus=None)
 
+
+class UpdateSurveyStatusInput(InputObjectType):
+    StatusName = String()
+    Description = String()
+    IsActive = Boolean()
+
+
+class UpdateSurveyStatusMutation(graphene.Mutation):
+    class Arguments:
+        surveyStatusId = String(required=True)
+        input = UpdateSurveyStatusInput(required=True)
+    
+    surveyStatus = Field(SurveyStatusType)
+    
+    def mutate(self, info, surveyStatusId, input):
+        try:
+            import schemas
+            # Convert GraphQL input to schema object
+            input_dict = {}
+            if input.StatusName is not None:
+                input_dict['StatusName'] = input.StatusName
+            if input.Description is not None:
+                input_dict['Description'] = input.Description
+            if input.IsActive is not None:
+                input_dict['IsActive'] = input.IsActive
+            
+            survey_status_update = schemas.SurveyStatusUpdate(**input_dict)
+            survey_status = crud.update_survey_status(surveyStatusId, survey_status_update)
+            
+            if survey_status:
+                return UpdateSurveyStatusMutation(surveyStatus=model_to_survey_status(survey_status))
+            else:
+                return UpdateSurveyStatusMutation(surveyStatus=None)
+        except Exception as e:
+            print(f"Error updating survey status: {e}")
+            return UpdateSurveyStatusMutation(surveyStatus=None)
+
 class CreateSurveyMutation(graphene.Mutation):
     class Arguments:
         input = SurveyInput(required=True)
@@ -1026,5 +1063,6 @@ class Mutation(graphene.ObjectType):
     updateSurvey = UpdateSurveyMutation.Field()
     createSurveyType = CreateSurveyTypeMutation.Field()
     createSurveyStatus = CreateSurveyStatusMutation.Field()
+    updateSurveyStatus = UpdateSurveyStatusMutation.Field()
 
 schema = graphene.Schema(query=Query, mutation=Mutation)
