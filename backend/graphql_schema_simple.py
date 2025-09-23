@@ -92,6 +92,23 @@ class PropertyListResponse(ObjectType):
     page = Int()
     size = Int()
 
+class TownshipType(ObjectType):
+    TownshipId = String()
+    TownshipName = String()
+    County = String()
+    State = String()
+    IsActive = Boolean()
+    CreatedDate = DateTime()
+    ModifiedDate = DateTime()
+    CreatedBy = String()
+    ModifiedBy = String()
+
+class TownshipListResponse(ObjectType):
+    townships = List(TownshipType)
+    total = Int()
+    page = Int()
+    size = Int()
+
 def model_to_survey(survey):
     """Convert Survey model to GraphQL type"""
     if not survey:
@@ -187,6 +204,22 @@ def model_to_property(property):
         ModifiedBy=getattr(property, 'ModifiedBy', None)
     )
 
+def model_to_township(township):
+    """Convert Township model to GraphQL type"""
+    if not township:
+        return None
+    return TownshipType(
+        TownshipId=getattr(township, 'TownshipId', ''),
+        TownshipName=getattr(township, 'TownshipName', ''),
+        County=getattr(township, 'County', ''),
+        State=getattr(township, 'State', ''),
+        IsActive=getattr(township, 'IsActive', True),
+        CreatedDate=getattr(township, 'CreatedDate', None),
+        ModifiedDate=getattr(township, 'ModifiedDate', None),
+        CreatedBy=getattr(township, 'CreatedBy', ''),
+        ModifiedBy=getattr(township, 'ModifiedBy', '')
+    )
+
 class Query(ObjectType):
     surveys = Field(SurveyListResponse, skip=Int(default_value=0), limit=Int(default_value=100), search=String())
     survey = Field(SurveyType, surveyId=String(required=True))
@@ -194,6 +227,8 @@ class Query(ObjectType):
     customer = Field(CustomerType, customerId=String(required=True))
     properties = Field(PropertyListResponse, skip=Int(default_value=0), limit=Int(default_value=100), search=String())
     property = Field(PropertyType, propertyId=String(required=True))
+    townships = Field(TownshipListResponse, skip=Int(default_value=0), limit=Int(default_value=100), search=String())
+    township = Field(TownshipType, townshipId=String(required=True))
 
     def resolve_surveys(self, info, skip=0, limit=100, search=None):
         try:
@@ -261,6 +296,28 @@ class Query(ObjectType):
             print(f"Error resolving property: {e}")
             return None
 
+    def resolve_townships(self, info, skip=0, limit=100, search=None):
+        try:
+            townships_data, total = crud.get_townships(skip=skip, limit=limit, search=search)
+            townships = [model_to_township(t) for t in townships_data]
+            return TownshipListResponse(
+                townships=townships,
+                total=total,
+                page=skip // limit + 1,
+                size=limit
+            )
+        except Exception as e:
+            print(f"Error resolving townships: {e}")
+            return TownshipListResponse(townships=[], total=0, page=1, size=limit)
+
+    def resolve_township(self, info, townshipId):
+        try:
+            township_data = crud.get_township(township_id=townshipId)
+            return model_to_township(township_data)
+        except Exception as e:
+            print(f"Error resolving township: {e}")
+            return None
+
 # Create simple schema with queries and mutations
 class CreateCustomerInput(graphene.InputObjectType):
     CustomerCode = String()
@@ -281,6 +338,18 @@ class PropertyInput(graphene.InputObjectType):
     OwnerEmail = String()
     AddressId = String()  # String in models.py, not Int
     TownshipId = String()  # String in models.py, not Int
+
+class TownshipInput(graphene.InputObjectType):
+    TownshipName = String(required=True)
+    County = String(required=True)
+    State = String(required=True)
+    IsActive = Boolean()
+
+class TownshipUpdateInput(graphene.InputObjectType):
+    TownshipName = String()
+    County = String()
+    State = String()
+    IsActive = Boolean()
 
 class CreateCustomerMutation(graphene.Mutation):
     class Arguments:
@@ -344,8 +413,58 @@ class CreatePropertyMutation(graphene.Mutation):
             traceback.print_exc()
             return None
 
+class CreateTownshipMutation(graphene.Mutation):
+    class Arguments:
+        input = TownshipInput(required=True)
+    
+    township = Field(TownshipType)
+    
+    def mutate(self, info, input):
+        try:
+            from schemas import TownshipCreate
+            township_data = TownshipCreate(**input)
+            township = crud.create_township(township=township_data)
+            return CreateTownshipMutation(township=model_to_township(township))
+        except Exception as e:
+            print(f"Error creating township: {e}")
+            return CreateTownshipMutation(township=None)
+
+class UpdateTownshipMutation(graphene.Mutation):
+    class Arguments:
+        townshipId = String(required=True)
+        input = TownshipUpdateInput(required=True)
+    
+    township = Field(TownshipType)
+    
+    def mutate(self, info, townshipId, input):
+        try:
+            from schemas import TownshipUpdate
+            township_data = TownshipUpdate(**input)
+            township = crud.update_township(township_id=townshipId, township=township_data)
+            return UpdateTownshipMutation(township=model_to_township(township))
+        except Exception as e:
+            print(f"Error updating township: {e}")
+            return UpdateTownshipMutation(township=None)
+
+class DeleteTownshipMutation(graphene.Mutation):
+    class Arguments:
+        townshipId = String(required=True)
+    
+    success = Boolean()
+    
+    def mutate(self, info, townshipId):
+        try:
+            success = crud.delete_township(township_id=townshipId)
+            return DeleteTownshipMutation(success=success)
+        except Exception as e:
+            print(f"Error deleting township: {e}")
+            return DeleteTownshipMutation(success=False)
+
 class Mutation(graphene.ObjectType):
     create_customer = CreateCustomerMutation.Field()
     createProperty = CreatePropertyMutation.Field()
+    create_township = CreateTownshipMutation.Field()
+    update_township = UpdateTownshipMutation.Field()
+    delete_township = DeleteTownshipMutation.Field()
 
 schema = graphene.Schema(query=Query, mutation=Mutation)

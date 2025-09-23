@@ -18,6 +18,10 @@ import {
   GET_SURVEY_TYPES,
   GET_SURVEY_STATUSES,
   GET_TOWNSHIPS,
+  GET_TOWNSHIP,
+  CREATE_TOWNSHIP,
+  UPDATE_TOWNSHIP,
+  DELETE_TOWNSHIP,
 } from '../graphql/queries';
 
 import {
@@ -32,7 +36,9 @@ import {
   PropertyListResponse,
   SurveyType,
   SurveyStatus,
-  Township
+  Township,
+  TownshipCreate,
+  TownshipListResponse
 } from '../types';
 
 // Customer hooks
@@ -204,7 +210,7 @@ export const useProperties = (page = 1, size = 100, search?: string) => {
   };
 };
 
-export const useProperty = (propertyId: number) => {
+export const useProperty = (propertyId: string) => {
   const { data, loading, error } = useQuery(GET_PROPERTY, {
     variables: { propertyId },
     skip: !propertyId,
@@ -236,7 +242,7 @@ export const useCreateProperty = () => {
 export const useUpdateProperty = () => {
   const [updateProperty, { loading, error }] = useMutation(UPDATE_PROPERTY);
 
-  const update = async (id: number, property: Partial<PropertyCreate>): Promise<Property> => {
+  const update = async (id: string, property: Partial<PropertyCreate>): Promise<Property> => {
     const result = await updateProperty({
       variables: {
         propertyId: id,
@@ -253,7 +259,7 @@ export const useUpdateProperty = () => {
 export const useDeleteProperty = () => {
   const [deleteProperty, { loading, error }] = useMutation(DELETE_PROPERTY);
 
-  const remove = async (id: number): Promise<boolean> => {
+  const remove = async (id: string): Promise<boolean> => {
     const result = await deleteProperty({
       variables: {
         propertyId: id,
@@ -287,12 +293,78 @@ export const useSurveyStatuses = () => {
   };
 };
 
-export const useTownships = () => {
-  const { data, loading, error } = useQuery(GET_TOWNSHIPS);
+export const useTownships = (page = 1, size = 100, search?: string) => {
+  const skip = (page - 1) * size;
+  const { data, loading, error, refetch } = useQuery(GET_TOWNSHIPS, {
+    variables: { skip, limit: size, search },
+  });
 
   return {
-    data: (data as any)?.townships as Township[] | undefined,
+    data: (data as any)?.townships as TownshipListResponse | undefined,
+    loading,
+    error,
+    refetch,
+  };
+};
+
+export const useTownship = (townshipId: string) => {
+  const { data, loading, error } = useQuery(GET_TOWNSHIP, {
+    variables: { townshipId },
+    skip: !townshipId,
+  });
+
+  return {
+    data: (data as any)?.township as Township | undefined,
     loading,
     error,
   };
+};
+
+export const useCreateTownship = () => {
+  const [createTownship, { loading, error }] = useMutation(CREATE_TOWNSHIP);
+
+  const create = async (township: TownshipCreate): Promise<Township> => {
+    const result = await createTownship({
+      variables: {
+        input: township,
+      },
+      refetchQueries: [GET_TOWNSHIPS],
+    });
+    return (result.data as any).create_township.township;
+  };
+
+  return { create, loading, error };
+};
+
+export const useUpdateTownship = () => {
+  const [updateTownship, { loading, error }] = useMutation(UPDATE_TOWNSHIP);
+
+  const update = async (id: string, township: Partial<TownshipCreate>): Promise<Township> => {
+    const result = await updateTownship({
+      variables: {
+        townshipId: id,
+        input: township,
+      },
+      refetchQueries: [GET_TOWNSHIPS, GET_TOWNSHIP],
+    });
+    return (result.data as any).update_township.township;
+  };
+
+  return { update, loading, error };
+};
+
+export const useDeleteTownship = () => {
+  const [deleteTownship, { loading, error }] = useMutation(DELETE_TOWNSHIP);
+
+  const remove = async (id: string): Promise<boolean> => {
+    const result = await deleteTownship({
+      variables: {
+        townshipId: id,
+      },
+      refetchQueries: [GET_TOWNSHIPS],
+    });
+    return (result.data as any).delete_township.success;
+  };
+
+  return { remove, loading, error };
 };

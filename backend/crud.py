@@ -440,3 +440,154 @@ def get_survey_statuses() -> List[SurveyStatus]:
     except ClientError as e:
         print(f"Error getting survey statuses: {e}")
         return []
+
+
+# Township CRUD
+def get_township(township_id: str) -> Optional[Township]:
+    """Get a single township by ID"""
+    table = get_table('Townships')
+    try:
+        response = table.get_item(Key={'TownshipId': township_id})
+        item = response.get('Item')
+        if item:
+            return Township(**deserialize_item(item))
+        return None
+    except ClientError as e:
+        print(f"Error getting township {township_id}: {e}")
+        return None
+
+
+def get_townships(skip: int = 0, limit: int = 100, search: Optional[str] = None) -> tuple[List[Township], int]:
+    """Get townships with pagination and optional search"""
+    table = get_table('Townships')
+    try:
+        filter_expression = Attr('IsActive').eq(True)
+        
+        if search:
+            search_filter = (
+                Attr('TownshipName').contains(search) |
+                Attr('County').contains(search) |
+                Attr('State').contains(search)
+            )
+            filter_expression = filter_expression & search_filter
+        
+        response = table.scan(FilterExpression=filter_expression)
+        items = response.get('Items', [])
+        
+        # Convert to Township objects
+        townships = [Township(**deserialize_item(item)) for item in items]
+        
+        # Sort by TownshipName
+        townships.sort(key=lambda x: x.TownshipName.lower())
+        
+        # Apply pagination
+        total = len(townships)
+        start = skip
+        end = skip + limit
+        paginated_townships = townships[start:end]
+        
+        return paginated_townships, total
+        
+    except ClientError as e:
+        print(f"Error getting townships: {e}")
+        return [], 0
+
+
+def create_township(township: schemas.TownshipCreate) -> Optional[Township]:
+    """Create a new township"""
+    table = get_table('Townships')
+    try:
+        # Create Township object
+        new_township = Township(
+            TownshipName=township.TownshipName,
+            County=township.County,
+            State=township.State,
+            IsActive=township.IsActive,
+            CreatedBy="system",  # TODO: get from auth context
+            ModifiedBy="system"
+        )
+        
+        # Serialize for DynamoDB
+        item = serialize_item(new_township.model_dump())
+        
+        # Save to DynamoDB
+        table.put_item(Item=item)
+        
+        return new_township
+        
+    except ClientError as e:
+        print(f"Error creating township: {e}")
+        return None
+
+
+def update_township(township_id: str, township: schemas.TownshipUpdate) -> Optional[Township]:
+    """Update an existing township"""
+    table = get_table('Townships')
+    try:
+        # Get existing township
+        existing = get_township(township_id)
+        if not existing:
+            return None
+        
+        # Update fields
+        update_expression = "SET ModifiedDate = :modified_date, ModifiedBy = :modified_by"
+        expression_values = {
+            ':modified_date': serialize_datetime(datetime.utcnow()),
+            ':modified_by': "system"  # TODO: get from auth context
+        }
+        
+        if township.TownshipName is not None:
+            update_expression += ", TownshipName = :township_name"
+            expression_values[':township_name'] = township.TownshipName
+        
+        if township.County is not None:
+            update_expression += ", County = :county"
+            expression_values[':county'] = township.County
+        
+        if township.State is not None:
+            update_expression += ", #state = :state"
+            expression_values[':state'] = township.State
+        
+        if township.IsActive is not None:
+            update_expression += ", IsActive = :is_active"
+            expression_values[':is_active'] = township.IsActive
+        
+        # Update in DynamoDB
+        response = table.update_item(
+            Key={'TownshipId': township_id},
+            UpdateExpression=update_expression,
+            ExpressionAttributeValues=expression_values,
+            ExpressionAttributeNames={'#state': 'State'} if township.State is not None else {},
+            ReturnValues='ALL_NEW'
+        )
+        
+        # Return updated township
+        item = response.get('Attributes')
+        if item:
+            return Township(**deserialize_item(item))
+        return None
+        
+    except ClientError as e:
+        print(f"Error updating township {township_id}: {e}")
+        return None
+
+
+def delete_township(township_id: str) -> bool:
+    """Soft delete a township by setting IsActive to False"""
+    table = get_table('Townships')
+    try:
+        # Update IsActive to False instead of actually deleting
+        table.update_item(
+            Key={'TownshipId': township_id},
+            UpdateExpression='SET IsActive = :is_active, ModifiedDate = :modified_date, ModifiedBy = :modified_by',
+            ExpressionAttributeValues={
+                ':is_active': False,
+                ':modified_date': serialize_datetime(datetime.utcnow()),
+                ':modified_by': "system"  # TODO: get from auth context
+            }
+        )
+        return True
+        
+    except ClientError as e:
+        print(f"Error deleting township {township_id}: {e}")
+        return False

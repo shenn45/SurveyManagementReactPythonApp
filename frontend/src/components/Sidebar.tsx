@@ -4,7 +4,8 @@ import {
   BuildingOfficeIcon, 
   DocumentTextIcon, 
   HomeIcon,
-  UsersIcon 
+  UsersIcon,
+  MapIcon
 } from '@heroicons/react/24/outline';
 
 const navigation = [
@@ -12,6 +13,7 @@ const navigation = [
   { name: 'Surveys', href: '/surveys', icon: DocumentTextIcon },
   { name: 'Customers', href: '/customers', icon: UsersIcon },
   { name: 'Properties', href: '/properties', icon: BuildingOfficeIcon },
+  { name: 'Townships', href: '/townships', icon: MapIcon },
 ];
 
 function classNames(...classes: string[]) {

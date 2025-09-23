@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import Customers from './pages/Customers';
 import Surveys from './pages/Surveys';
 import Properties from './pages/Properties';
+import Townships from './pages/Townships';
 import { useCustomers, useSurveys, useProperties } from './hooks/useGraphQLApi';
 
 function Dashboard() {
@@ -95,6 +96,7 @@ function App() {
               <Route path="/surveys" element={<Surveys />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/properties" element={<Properties />} />
+              <Route path="/townships" element={<Townships />} />
             </Routes>
           </main>
         </div>

@@ -18,14 +18,22 @@ export default function Properties() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [formData, setFormData] = useState<PropertyCreate>({
+    PropertyCode: '',
+    PropertyName: '',
+    PropertyDescription: '',
+    OwnerName: '',
+    OwnerPhone: '',
+    OwnerEmail: '',
+    AddressId: '',
+    TownshipId: '',
+    IsActive: true,
+    // Legacy fields
     SurveyPrimaryKey: 0,
     LegacyTax: '',
     District: '',
     Section: '',
     Block: '',
     Lot: '',
-    AddressId: 0,
-    TownshipId: 0,
     PropertyType: '',
   });
 
@@ -38,7 +46,7 @@ export default function Properties() {
   const { remove: deleteProperty } = useDeleteProperty();
   
   // Lookup data
-  const { data: townships } = useTownships();
+  const { data: townships } = useTownships(1, 1000); // Get all townships for dropdown
 
   const properties = propertiesData?.properties || [];
   const totalPages = propertiesData ? Math.ceil(propertiesData.total / pageSize) : 1;
@@ -77,14 +85,22 @@ export default function Properties() {
 
   const resetForm = () => {
     setFormData({
+      PropertyCode: '',
+      PropertyName: '',
+      PropertyDescription: '',
+      OwnerName: '',
+      OwnerPhone: '',
+      OwnerEmail: '',
+      AddressId: '',
+      TownshipId: '',
+      IsActive: true,
+      // Legacy fields
       SurveyPrimaryKey: 0,
       LegacyTax: '',
       District: '',
       Section: '',
       Block: '',
       Lot: '',
-      AddressId: 0,
-      TownshipId: 0,
       PropertyType: '',
     });
   };
@@ -93,14 +109,22 @@ export default function Properties() {
     if (property) {
       setEditingProperty(property);
       setFormData({
+        PropertyCode: property.PropertyCode || '',
+        PropertyName: property.PropertyName || '',
+        PropertyDescription: property.PropertyDescription || '',
+        OwnerName: property.OwnerName || '',
+        OwnerPhone: property.OwnerPhone || '',
+        OwnerEmail: property.OwnerEmail || '',
+        AddressId: property.AddressId || '',
+        TownshipId: property.TownshipId || '',
+        IsActive: property.IsActive,
+        // Legacy fields
         SurveyPrimaryKey: property.SurveyPrimaryKey || 0,
         LegacyTax: property.LegacyTax || '',
-        District: property.District,
-        Section: property.Section,
-        Block: property.Block,
-        Lot: property.Lot,
-        AddressId: property.AddressId || 0,
-        TownshipId: property.TownshipId || 0,
+        District: property.District || '',
+        Section: property.Section || '',
+        Block: property.Block || '',
+        Lot: property.Lot || '',
         PropertyType: property.PropertyType || '',
       });
     } else {
@@ -205,7 +229,7 @@ export default function Properties() {
                         {property.LegacyTax || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {townships?.find(t => t.TownshipId === property.TownshipId)?.Name || '-'}
+                        {townships?.townships?.find(t => t.TownshipId === property.TownshipId)?.TownshipName || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {property.PropertyType || '-'}
@@ -248,13 +272,90 @@ export default function Properties() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
+              <label htmlFor="propertyCode" className="block text-sm font-medium text-gray-700">
+                Property Code *
+              </label>
+              <input
+                type="text"
+                id="propertyCode"
+                required
+                value={formData.PropertyCode}
+                onChange={(e) => setFormData({ ...formData, PropertyCode: e.target.value })}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
+            </div>
+            <div>
+              <label htmlFor="propertyName" className="block text-sm font-medium text-gray-700">
+                Property Name *
+              </label>
+              <input
+                type="text"
+                id="propertyName"
+                required
+                value={formData.PropertyName}
+                onChange={(e) => setFormData({ ...formData, PropertyName: e.target.value })}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="propertyDescription" className="block text-sm font-medium text-gray-700">
+              Property Description
+            </label>
+            <textarea
+              id="propertyDescription"
+              value={formData.PropertyDescription}
+              onChange={(e) => setFormData({ ...formData, PropertyDescription: e.target.value })}
+              rows={3}
+              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="ownerName" className="block text-sm font-medium text-gray-700">
+                Owner Name
+              </label>
+              <input
+                type="text"
+                id="ownerName"
+                value={formData.OwnerName}
+                onChange={(e) => setFormData({ ...formData, OwnerName: e.target.value })}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
+            </div>
+            <div>
+              <label htmlFor="ownerPhone" className="block text-sm font-medium text-gray-700">
+                Owner Phone
+              </label>
+              <input
+                type="tel"
+                id="ownerPhone"
+                value={formData.OwnerPhone}
+                onChange={(e) => setFormData({ ...formData, OwnerPhone: e.target.value })}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="ownerEmail" className="block text-sm font-medium text-gray-700">
+              Owner Email
+            </label>
+            <input
+              type="email"
+              id="ownerEmail"
+              value={formData.OwnerEmail}
+              onChange={(e) => setFormData({ ...formData, OwnerEmail: e.target.value })}
+              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
               <label htmlFor="district" className="block text-sm font-medium text-gray-700">
-                District *
+                District
               </label>
               <input
                 type="text"
                 id="district"
-                required
                 value={formData.District}
                 onChange={(e) => setFormData({ ...formData, District: e.target.value })}
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -262,12 +363,11 @@ export default function Properties() {
             </div>
             <div>
               <label htmlFor="section" className="block text-sm font-medium text-gray-700">
-                Section *
+                Section
               </label>
               <input
                 type="text"
                 id="section"
-                required
                 value={formData.Section}
                 onChange={(e) => setFormData({ ...formData, Section: e.target.value })}
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -339,13 +439,13 @@ export default function Properties() {
               <select
                 id="townshipId"
                 value={formData.TownshipId}
-                onChange={(e) => setFormData({ ...formData, TownshipId: parseInt(e.target.value) })}
+                onChange={(e) => setFormData({ ...formData, TownshipId: e.target.value })}
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               >
-                <option value={0}>Select a township...</option>
-                {townships?.map((township) => (
+                <option value="">Select a township...</option>
+                {townships?.townships?.map((township) => (
                   <option key={township.TownshipId} value={township.TownshipId}>
-                    {township.Name}
+                    {township.TownshipName}
                   </option>
                 ))}
               </select>

@@ -350,13 +350,82 @@ export const GET_SURVEY_STATUSES = gql`
 `;
 
 export const GET_TOWNSHIPS = gql`
-  query GetTownships {
-    townships {
+  query GetTownships($skip: Int = 0, $limit: Int = 100, $search: String) {
+    townships(skip: $skip, limit: $limit, search: $search) {
+      townships {
+        TownshipId
+        TownshipName
+        County
+        State
+        IsActive
+        CreatedDate
+        ModifiedDate
+        CreatedBy
+        ModifiedBy
+      }
+      total
+      page
+      size
+    }
+  }
+`;
+
+export const GET_TOWNSHIP = gql`
+  query GetTownship($townshipId: String!) {
+    township(townshipId: $townshipId) {
       TownshipId
-      Name
-      FoilMethod
-      Website
-      Description
+      TownshipName
+      County
+      State
+      IsActive
+      CreatedDate
+      ModifiedDate
+      CreatedBy
+      ModifiedBy
+    }
+  }
+`;
+
+export const CREATE_TOWNSHIP = gql`
+  mutation CreateTownship($input: TownshipInput!) {
+    create_township(input: $input) {
+      township {
+        TownshipId
+        TownshipName
+        County
+        State
+        IsActive
+        CreatedDate
+        ModifiedDate
+        CreatedBy
+        ModifiedBy
+      }
+    }
+  }
+`;
+
+export const UPDATE_TOWNSHIP = gql`
+  mutation UpdateTownship($townshipId: String!, $input: TownshipUpdateInput!) {
+    update_township(townshipId: $townshipId, input: $input) {
+      township {
+        TownshipId
+        TownshipName
+        County
+        State
+        IsActive
+        CreatedDate
+        ModifiedDate
+        CreatedBy
+        ModifiedBy
+      }
+    }
+  }
+`;
+
+export const DELETE_TOWNSHIP = gql`
+  mutation DeleteTownship($townshipId: String!) {
+    delete_township(townshipId: $townshipId) {
+      success
     }
   }
 `;

@@ -1,7 +1,16 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Generic, TypeVar
 from datetime import datetime
 from decimal import Decimal
+
+# Generic Pagination Schema
+T = TypeVar('T')
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    data: List[T]
+    total: int
+    page: int
+    size: int
 
 # Address Schemas
 class AddressBase(BaseModel):
@@ -58,19 +67,26 @@ class Customer(CustomerBase):
 
 # Township Schemas
 class TownshipBase(BaseModel):
-    Name: str
-    FoilMethod: Optional[str] = None
-    Website: Optional[str] = None
-    Description: Optional[str] = None
+    TownshipName: str
+    County: str
+    State: str
+    IsActive: Optional[bool] = True
 
 class TownshipCreate(TownshipBase):
     pass
 
 class TownshipUpdate(TownshipBase):
-    pass
+    TownshipName: Optional[str] = None
+    County: Optional[str] = None
+    State: Optional[str] = None
+    IsActive: Optional[bool] = None
 
 class Township(TownshipBase):
-    TownshipId: int
+    TownshipId: str
+    CreatedDate: datetime
+    ModifiedDate: datetime
+    CreatedBy: Optional[str] = None
+    ModifiedBy: Optional[str] = None
     
     class Config:
         from_attributes = True

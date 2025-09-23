@@ -83,31 +83,49 @@ export interface SurveyCreate {
 }
 
 export interface Property {
-  PropertyId: number;
-  SurveyPrimaryKey: number;
+  PropertyId: string;
+  PropertyCode: string;
+  PropertyName: string;
+  PropertyDescription?: string;
+  OwnerName?: string;
+  OwnerPhone?: string;
+  OwnerEmail?: string;
+  AddressId?: string;
+  TownshipId?: string;
+  IsActive: boolean;
+  CreatedDate: string;
+  ModifiedDate: string;
+  CreatedBy?: string;
+  ModifiedBy?: string;
+  // Legacy fields for backward compatibility
+  SurveyPrimaryKey?: number;
   LegacyTax?: string;
   District?: string;
   Section?: string;
   Block?: string;
   Lot?: string;
-  AddressId?: number;
-  TownshipId?: number;
   PropertyType?: string;
-  CreatedDate: string;
-  ModifiedDate: string;
   address?: Address;
   township?: Township;
 }
 
 export interface PropertyCreate {
-  SurveyPrimaryKey: number;
+  PropertyCode: string;
+  PropertyName: string;
+  PropertyDescription?: string;
+  OwnerName?: string;
+  OwnerPhone?: string;
+  OwnerEmail?: string;
+  AddressId?: string;
+  TownshipId?: string;
+  IsActive?: boolean;
+  // Legacy fields for backward compatibility
+  SurveyPrimaryKey?: number;
   LegacyTax?: string;
   District?: string;
   Section?: string;
   Block?: string;
   Lot?: string;
-  AddressId?: number;
-  TownshipId?: number;
   PropertyType?: string;
 }
 
@@ -143,11 +161,22 @@ export interface SurveyStatus {
 }
 
 export interface Township {
-  TownshipId: number;
-  Name: string;
-  FoilMethod?: string;
-  Website?: string;
-  Description?: string;
+  TownshipId: string;
+  TownshipName: string;
+  County: string;
+  State: string;
+  IsActive: boolean;
+  CreatedDate: string;
+  ModifiedDate: string;
+  CreatedBy?: string;
+  ModifiedBy?: string;
+}
+
+export interface TownshipCreate {
+  TownshipName: string;
+  County: string;
+  State: string;
+  IsActive?: boolean;
 }
 
 export interface SurveyNote {
@@ -190,4 +219,8 @@ export interface SurveyListResponse extends PaginatedResponse<Survey> {
 
 export interface PropertyListResponse extends PaginatedResponse<Property> {
   properties: Property[];
+}
+
+export interface TownshipListResponse extends PaginatedResponse<Township> {
+  townships: Township[];
 }
