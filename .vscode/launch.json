@@ -1,0 +1,87 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: FastAPI Backend",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}/backend",
+            "python": "${workspaceFolder}/venv/Scripts/python.exe",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/backend",
+                "AWS_ACCESS_KEY_ID": "fake",
+                "AWS_SECRET_ACCESS_KEY": "fake",
+                "AWS_DEFAULT_REGION": "us-east-1",
+                "DYNAMODB_ENDPOINT": "http://localhost:8000",
+                "ENVIRONMENT": "local"
+            },
+            "args": []
+        },
+        {
+            "name": "Python: Start Local DynamoDB",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/start_local_dynamodb.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}/backend",
+            "python": "${workspaceFolder}/venv/Scripts/python.exe",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/backend"
+            }
+        },
+        {
+            "name": "Python: Test Township Creation",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/test_township_creation.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}/backend",
+            "python": "${workspaceFolder}/venv/Scripts/python.exe",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/backend",
+                "AWS_ACCESS_KEY_ID": "fake",
+                "AWS_SECRET_ACCESS_KEY": "fake",
+                "AWS_DEFAULT_REGION": "us-east-1",
+                "DYNAMODB_ENDPOINT": "http://localhost:8000",
+                "ENVIRONMENT": "local"
+            }
+        },
+        {
+            "name": "Launch Chrome for React",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:3000",
+            "webRoot": "${workspaceFolder}/frontend/src",
+            "sourceMaps": true,
+            "userDataDir": "${workspaceFolder}/.vscode/chrome-debug"
+        },
+        {
+            "name": "Attach to Chrome",
+            "type": "chrome",
+            "request": "attach",
+            "port": 9222,
+            "webRoot": "${workspaceFolder}/frontend/src",
+            "sourceMaps": true
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Launch Full Stack App",
+            "configurations": [
+                "Python: Start Local DynamoDB",
+                "Python: FastAPI Backend"
+            ],
+            "stopAll": true,
+            "presentation": {
+                "hidden": false,
+                "group": "Full Stack",
+                "order": 1
+            }
+        }
+    ]
+}
