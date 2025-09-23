@@ -330,7 +330,7 @@ export const useCreateTownship = () => {
       },
       refetchQueries: [GET_TOWNSHIPS],
     });
-    return (result.data as any).create_township.township;
+    return (result.data as any).createTownship.township;
   };
 
   return { create, loading, error };
@@ -347,7 +347,7 @@ export const useUpdateTownship = () => {
       },
       refetchQueries: [GET_TOWNSHIPS, GET_TOWNSHIP],
     });
-    return (result.data as any).update_township.township;
+    return (result.data as any).updateTownship.township;
   };
 
   return { update, loading, error };
@@ -363,7 +363,7 @@ export const useDeleteTownship = () => {
       },
       refetchQueries: [GET_TOWNSHIPS],
     });
-    return (result.data as any).delete_township.success;
+    return (result.data as any).deleteTownship.success;
   };
 
   return { remove, loading, error };

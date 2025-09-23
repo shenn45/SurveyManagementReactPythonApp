@@ -388,7 +388,7 @@ export const GET_TOWNSHIP = gql`
 
 export const CREATE_TOWNSHIP = gql`
   mutation CreateTownship($input: TownshipInput!) {
-    create_township(input: $input) {
+    createTownship(input: $input) {
       township {
         TownshipId
         TownshipName
@@ -406,7 +406,7 @@ export const CREATE_TOWNSHIP = gql`
 
 export const UPDATE_TOWNSHIP = gql`
   mutation UpdateTownship($townshipId: String!, $input: TownshipUpdateInput!) {
-    update_township(townshipId: $townshipId, input: $input) {
+    updateTownship(townshipId: $townshipId, input: $input) {
       township {
         TownshipId
         TownshipName
@@ -424,7 +424,7 @@ export const UPDATE_TOWNSHIP = gql`
 
 export const DELETE_TOWNSHIP = gql`
   mutation DeleteTownship($townshipId: String!) {
-    delete_township(townshipId: $townshipId) {
+    deleteTownship(townshipId: $townshipId) {
       success
     }
   }
