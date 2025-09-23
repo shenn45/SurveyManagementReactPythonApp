@@ -93,15 +93,22 @@ class Township(TownshipBase):
 
 # Property Schemas
 class PropertyBase(BaseModel):
-    SurveyPrimaryKey: int
+    PropertyCode: Optional[str] = None
+    PropertyName: Optional[str] = None
+    PropertyDescription: Optional[str] = None
+    OwnerName: Optional[str] = None
+    OwnerPhone: Optional[str] = None
+    OwnerEmail: Optional[str] = None
+    SurveyPrimaryKey: Optional[int] = None  # Make optional for updates
     LegacyTax: Optional[str] = None
     District: Optional[str] = None
     Section: Optional[str] = None
     Block: Optional[str] = None
     Lot: Optional[str] = None
-    AddressId: Optional[int] = None
-    TownshipId: Optional[int] = None
+    AddressId: Optional[str] = None  # Changed from int to str for UUID
+    TownshipId: Optional[str] = None  # Changed from int to str for UUID
     PropertyType: Optional[str] = None
+    IsActive: Optional[bool] = True
 
 class PropertyCreate(PropertyBase):
     pass
@@ -110,7 +117,7 @@ class PropertyUpdate(PropertyBase):
     pass
 
 class Property(PropertyBase):
-    PropertyId: int
+    PropertyId: str  # Changed from int to str for UUID
     CreatedDate: datetime
     ModifiedDate: datetime
     address: Optional[Address] = None

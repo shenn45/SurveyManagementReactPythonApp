@@ -63,17 +63,17 @@ class CustomerListResponse(ObjectType):
     size = Int()
 
 class PropertyType(ObjectType):
-    PropertyId = Int()  # Frontend expects number
+    PropertyId = String()  # Changed from Int to String to match UUID
     PropertyCode = String()
     PropertyName = String()
     PropertyDescription = String()
     OwnerName = String()
     OwnerPhone = String()
     OwnerEmail = String()
-    AddressId = Int()  # Frontend expects number
-    TownshipId = Int()  # Frontend expects number
+    AddressId = String()  # Changed from Int to String for consistency
+    TownshipId = String()  # Changed from Int to String for consistency
     # Frontend expected fields
-    SurveyPrimaryKey = Int()  # Frontend expects number
+    SurveyPrimaryKey = Int()  # Keep as Int since it's actually a number
     LegacyTax = String()
     District = String()
     Section = String()
@@ -180,15 +180,15 @@ def model_to_property(property):
             return default
     
     return PropertyType(
-        PropertyId=safe_int(getattr(property, 'PropertyId', None)),
+        PropertyId=str(getattr(property, 'PropertyId', '')),  # Keep as string
         PropertyCode=getattr(property, 'PropertyCode', None),
         PropertyName=getattr(property, 'PropertyName', None),
         PropertyDescription=getattr(property, 'PropertyDescription', None),
         OwnerName=getattr(property, 'OwnerName', None),
         OwnerPhone=getattr(property, 'OwnerPhone', None),
         OwnerEmail=getattr(property, 'OwnerEmail', None),
-        AddressId=safe_int(getattr(property, 'AddressId', None)),
-        TownshipId=safe_int(getattr(property, 'TownshipId', None)),
+        AddressId=str(getattr(property, 'AddressId', '')),  # Keep as string
+        TownshipId=str(getattr(property, 'TownshipId', '')),  # Keep as string
         # Frontend expected fields with proper type conversion
         SurveyPrimaryKey=safe_int(getattr(property, 'SurveyPrimaryKey', None)),
         LegacyTax=getattr(property, 'LegacyTax', None),
@@ -330,14 +330,53 @@ class CreateCustomerInput(graphene.InputObjectType):
     Website = String()
 
 class PropertyInput(graphene.InputObjectType):
-    PropertyCode = String(required=True)  # Required in models.py
-    PropertyName = String(required=True)  # Required in models.py
+    PropertyCode = String(required=True)
+    PropertyName = String(required=True) 
     PropertyDescription = String()
     OwnerName = String()
     OwnerPhone = String()
     OwnerEmail = String()
-    AddressId = String()  # String in models.py, not Int
-    TownshipId = String()  # String in models.py, not Int
+    AddressId = String()
+    TownshipId = String()
+    IsActive = Boolean()
+    # Legacy fields for backward compatibility
+    SurveyPrimaryKey = Int()
+    LegacyTax = String()
+    District = String()
+    Section = String()
+    Block = String()
+    Lot = String()
+    PropertyType = String()
+    # Extended property fields
+    ParcelNumber = String()
+    LegalDescription = String()
+    Address = String()
+    City = String()
+    State = String()
+    ZipCode = String()
+    County = String()
+    Acreage = Float()
+    SqFootage = Float()
+    YearBuilt = Int()
+    AssessedValue = Float()
+    MarketValue = Float()
+    PropertyTaxes = Float()
+    Zoning = String()
+    LandUse = String()
+    Utilities = String()
+    AccessRights = String()
+    Restrictions = String()
+    Easements = String()
+    FloodZone = String()
+    SoilType = String()
+    Topography = String()
+    EnvironmentalConcerns = String()
+    PreviousSurveys = String()
+    Notes = String()
+    Section = String()
+    Block = String()
+    Lot = String()
+    PropertyType = String()
 
 class TownshipInput(graphene.InputObjectType):
     TownshipName = String(required=True)
@@ -350,6 +389,51 @@ class TownshipUpdateInput(graphene.InputObjectType):
     County = String()
     State = String()
     IsActive = Boolean()
+
+class PropertyUpdateInput(graphene.InputObjectType):
+    PropertyCode = String()
+    PropertyName = String()
+    PropertyDescription = String()
+    OwnerName = String()
+    OwnerPhone = String()
+    OwnerEmail = String()
+    AddressId = String()
+    TownshipId = String()
+    IsActive = Boolean()
+    # Legacy fields for backward compatibility
+    SurveyPrimaryKey = Int()
+    LegacyTax = String()
+    District = String()
+    Section = String()
+    Block = String()
+    Lot = String()
+    PropertyType = String()
+    # Extended property fields
+    ParcelNumber = String()
+    LegalDescription = String()
+    Address = String()
+    City = String()
+    State = String()
+    ZipCode = String()
+    County = String()
+    Acreage = Float()
+    SqFootage = Float()
+    YearBuilt = Int()
+    AssessedValue = Float()
+    MarketValue = Float()
+    PropertyTaxes = Float()
+    Zoning = String()
+    LandUse = String()
+    Utilities = String()
+    AccessRights = String()
+    Restrictions = String()
+    Easements = String()
+    FloodZone = String()
+    SoilType = String()
+    Topography = String()
+    EnvironmentalConcerns = String()
+    PreviousSurveys = String()
+    Notes = String()
 
 class CreateCustomerMutation(graphene.Mutation):
     class Arguments:
@@ -371,44 +455,42 @@ class CreatePropertyMutation(graphene.Mutation):
     class Arguments:
         input = PropertyInput(required=True)
     
-    # Return fields that frontend expects, even if they don't exist in models.py Property
-    PropertyId = String()  # String in models.py but frontend might expect Int
-    SurveyPrimaryKey = Int()  # Frontend expects this
-    LegacyTax = String()  # Frontend expects this
-    District = String()  # Frontend expects this  
-    Section = String()  # Frontend expects this
-    Block = String()  # Frontend expects this
-    Lot = String()  # Frontend expects this
-    AddressId = String()  # String in models.py
-    TownshipId = String()  # String in models.py
-    PropertyType = String()  # Frontend expects this
-    CreatedDate = DateTime()
-    ModifiedDate = DateTime()
+    property = Field(PropertyType)
     
     def mutate(self, info, input):
         try:
-            from models import Property
-            # Create Property using models.py Property class directly
-            property_data = Property(**input)
+            from schemas import PropertyCreate
+            # Create PropertyCreate schema object for CRUD
+            property_data = PropertyCreate(**input)
             property = crud.create_property(property=property_data)
             if property:
-                return CreatePropertyMutation(
-                    PropertyId=getattr(property, 'PropertyId', ''),
-                    SurveyPrimaryKey=0,  # Default value since not in models.py Property
-                    LegacyTax='',  # Default value since not in models.py Property
-                    District='',  # Default value since not in models.py Property
-                    Section='',  # Default value since not in models.py Property
-                    Block='',  # Default value since not in models.py Property
-                    Lot='',  # Default value since not in models.py Property
-                    AddressId=getattr(property, 'AddressId', ''),
-                    TownshipId=getattr(property, 'TownshipId', ''),
-                    PropertyType='Residential',  # Default value since not in models.py Property
-                    CreatedDate=getattr(property, 'CreatedDate', None),
-                    ModifiedDate=getattr(property, 'ModifiedDate', None)
-                )
+                return CreatePropertyMutation(property=model_to_property(property))
             return None
         except Exception as e:
             print(f"Error creating property: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+            return None
+
+class UpdatePropertyMutation(graphene.Mutation):
+    class Arguments:
+        propertyId = String(required=True)
+        input = PropertyUpdateInput(required=True)
+    
+    property = Field(PropertyType)
+    
+    def mutate(self, info, propertyId, input):
+        try:
+            from schemas import PropertyUpdate
+            # Create PropertyUpdate schema object for CRUD
+            property_data = PropertyUpdate(**input)
+            property = crud.update_property(property_id=propertyId, property=property_data)
+            if property:
+                return UpdatePropertyMutation(property=model_to_property(property))
+            return None
+        except Exception as e:
+            print(f"Error updating property: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -463,6 +545,7 @@ class DeleteTownshipMutation(graphene.Mutation):
 class Mutation(graphene.ObjectType):
     create_customer = CreateCustomerMutation.Field()
     createProperty = CreatePropertyMutation.Field()
+    updateProperty = UpdatePropertyMutation.Field()
     create_township = CreateTownshipMutation.Field()
     update_township = UpdateTownshipMutation.Field()
     delete_township = DeleteTownshipMutation.Field()

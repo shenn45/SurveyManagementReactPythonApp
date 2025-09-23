@@ -1,0 +1,6 @@
+{
+  "query": "query GetProperty($propertyId: String!) { property(propertyId: $propertyId) { PropertyId PropertyCode PropertyName PropertyDescription OwnerName OwnerPhone OwnerEmail IsActive } }",
+  "variables": {
+    "propertyId": "f9076c24-e34a-4267-8762-85abd299cdf0"
+  }
+}

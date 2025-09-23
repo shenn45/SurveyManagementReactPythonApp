@@ -233,7 +233,7 @@ export const useCreateProperty = () => {
       },
       refetchQueries: [GET_PROPERTIES],
     });
-    return (result.data as any).createProperty;
+    return (result.data as any).createProperty.property;
   };
 
   return { create, loading, error };
@@ -250,7 +250,7 @@ export const useUpdateProperty = () => {
       },
       refetchQueries: [GET_PROPERTIES, GET_PROPERTY],
     });
-    return (result.data as any).updateProperty;
+    return (result.data as any).updateProperty.property;
   };
 
   return { update, loading, error };

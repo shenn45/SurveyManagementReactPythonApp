@@ -413,6 +413,33 @@ def create_property(property: schemas.PropertyCreate) -> Optional[Property]:
         print(f"Error creating property: {e}")
         return None
 
+def update_property(property_id: str, property: schemas.PropertyUpdate) -> Optional[Property]:
+    """Update an existing property"""
+    table = get_table('Properties')
+    
+    try:
+        # Get existing property first
+        response = table.get_item(Key={'PropertyId': property_id})
+        if 'Item' not in response:
+            print(f"Property {property_id} not found")
+            return None
+        
+        existing_property = deserialize_item(response['Item'])
+        
+        # Update with new data
+        property_data = property.dict(exclude_unset=True)
+        existing_property.update(property_data)
+        existing_property['ModifiedDate'] = datetime.utcnow()
+        
+        # Save updated property
+        serialized_data = serialize_item(existing_property)
+        table.put_item(Item=serialized_data)
+        return Property(**existing_property)
+        
+    except ClientError as e:
+        print(f"Error updating property: {e}")
+        return None
+
 # Survey Type CRUD
 def get_survey_types() -> List[SurveyType]:
     """Get all active survey types"""

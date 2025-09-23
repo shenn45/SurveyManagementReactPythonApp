@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 """
-Start a local DynamoDB server using moto for development
+Create DynamoDB tables for local development
 """
-import os
-import sys
-from moto import mock_dynamodb
-from moto.server import run_simple
 import boto3
-from dotenv import load_dotenv
-
-load_dotenv()
+import os
 
 def create_tables():
     """Create the required DynamoDB tables"""
+    # Connect to local DynamoDB
     dynamodb = boto3.resource(
         'dynamodb',
         endpoint_url='http://localhost:8001',
@@ -20,6 +15,8 @@ def create_tables():
         aws_secret_access_key='fake_secret_key',
         region_name='us-east-1'
     )
+    
+    print("Creating DynamoDB tables...")
     
     # Create Customers table
     try:
@@ -39,9 +36,9 @@ def create_tables():
             ],
             BillingMode='PAY_PER_REQUEST'
         )
-        print("Created Customers table")
+        print("✓ Created Customers table")
     except Exception as e:
-        print(f"Customers table might already exist: {e}")
+        print(f"⚠ Customers table might already exist: {e}")
     
     # Create Surveys table
     try:
@@ -61,9 +58,9 @@ def create_tables():
             ],
             BillingMode='PAY_PER_REQUEST'
         )
-        print("Created Surveys table")
+        print("✓ Created Surveys table")
     except Exception as e:
-        print(f"Surveys table might already exist: {e}")
+        print(f"⚠ Surveys table might already exist: {e}")
     
     # Create Properties table
     try:
@@ -83,9 +80,9 @@ def create_tables():
             ],
             BillingMode='PAY_PER_REQUEST'
         )
-        print("Created Properties table")
+        print("✓ Created Properties table")
     except Exception as e:
-        print(f"Properties table might already exist: {e}")
+        print(f"⚠ Properties table might already exist: {e}")
     
     # Create Townships table
     try:
@@ -105,29 +102,11 @@ def create_tables():
             ],
             BillingMode='PAY_PER_REQUEST'
         )
-        print("Created Townships table")
+        print("✓ Created Townships table")
     except Exception as e:
-        print(f"Townships table might already exist: {e}")
+        print(f"⚠ Townships table might already exist: {e}")
+    
+    print("✅ Table creation completed!")
 
 if __name__ == "__main__":
-    print("Starting local DynamoDB server on port 8001...")
-    
-    # Create tables automatically
-    print("Creating DynamoDB tables...")
     create_tables()
-    
-    print("You can also create tables manually by running: python create_tables.py")
-    
-    # Start the moto DynamoDB server
-    try:
-        run_simple(
-            "localhost", 
-            8001, 
-            None,  # Will be set up by moto
-            threaded=True,
-            use_reloader=False,
-            use_debugger=False
-        )
-    except KeyboardInterrupt:
-        print("\nShutting down DynamoDB server...")
-        sys.exit(0)

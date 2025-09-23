@@ -1,0 +1,15 @@
+{
+  "query": "mutation UpdateProperty($propertyId: String!, $input: PropertyUpdateInput!) { updateProperty(propertyId: $propertyId, input: $input) { property { PropertyId PropertyCode PropertyName PropertyDescription OwnerName IsActive } } }",
+  "variables": {
+    "propertyId": "f9076c24-e34a-4267-8762-85abd299cdf0",
+    "input": {
+      "PropertyCode": "PROP001-UPDATED",
+      "PropertyName": "Updated Test Property",
+      "PropertyDescription": "Updated Test Description",
+      "OwnerName": "John Doe Updated",
+      "OwnerPhone": "123-456-7890",
+      "OwnerEmail": "john.updated@example.com",
+      "IsActive": true
+    }
+  }
+}

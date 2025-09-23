@@ -240,6 +240,12 @@ export const GET_PROPERTIES = gql`
     properties(skip: $skip, limit: $limit, search: $search) {
       properties {
         PropertyId
+        PropertyCode
+        PropertyName
+        PropertyDescription
+        OwnerName
+        OwnerPhone
+        OwnerEmail
         SurveyPrimaryKey
         LegacyTax
         District
@@ -249,6 +255,7 @@ export const GET_PROPERTIES = gql`
         AddressId
         TownshipId
         PropertyType
+        IsActive
         CreatedDate
         ModifiedDate
       }
@@ -260,9 +267,15 @@ export const GET_PROPERTIES = gql`
 `;
 
 export const GET_PROPERTY = gql`
-  query GetProperty($propertyId: Int!) {
+  query GetProperty($propertyId: String!) {
     property(propertyId: $propertyId) {
       PropertyId
+      PropertyCode
+      PropertyName
+      PropertyDescription
+      OwnerName
+      OwnerPhone
+      OwnerEmail
       SurveyPrimaryKey
       LegacyTax
       District
@@ -272,6 +285,7 @@ export const GET_PROPERTY = gql`
       AddressId
       TownshipId
       PropertyType
+      IsActive
       CreatedDate
       ModifiedDate
     }
@@ -282,43 +296,61 @@ export const GET_PROPERTY = gql`
 export const CREATE_PROPERTY = gql`
   mutation CreateProperty($input: PropertyInput!) {
     createProperty(input: $input) {
-      PropertyId
-      SurveyPrimaryKey
-      LegacyTax
-      District
-      Section
-      Block
-      Lot
-      AddressId
-      TownshipId
-      PropertyType
-      CreatedDate
-      ModifiedDate
+      property {
+        PropertyId
+        PropertyCode
+        PropertyName
+        PropertyDescription
+        OwnerName
+        OwnerPhone
+        OwnerEmail
+        SurveyPrimaryKey
+        LegacyTax
+        District
+        Section
+        Block
+        Lot
+        AddressId
+        TownshipId
+        PropertyType
+        IsActive
+        CreatedDate
+        ModifiedDate
+      }
     }
   }
 `;
 
 export const UPDATE_PROPERTY = gql`
-  mutation UpdateProperty($propertyId: Int!, $input: PropertyUpdateInput!) {
+  mutation UpdateProperty($propertyId: String!, $input: PropertyUpdateInput!) {
     updateProperty(propertyId: $propertyId, input: $input) {
-      PropertyId
-      SurveyPrimaryKey
-      LegacyTax
-      District
-      Section
-      Block
-      Lot
-      AddressId
-      TownshipId
-      PropertyType
-      CreatedDate
-      ModifiedDate
+      property {
+        PropertyId
+        PropertyCode
+        PropertyName
+        PropertyDescription
+        OwnerName
+        OwnerPhone
+        OwnerEmail
+        SurveyPrimaryKey
+        LegacyTax
+        District
+        Section
+        Block
+        Lot
+        AddressId
+        TownshipId
+        PropertyType
+        IsActive
+        CreatedDate
+        ModifiedDate
+      }
     }
   }
 `;
 
 export const DELETE_PROPERTY = gql`
-  mutation DeleteProperty($propertyId: Int!) {
+  mutation DeleteProperty($propertyId: String!) {
     deleteProperty(propertyId: $propertyId)
   }
 `;
