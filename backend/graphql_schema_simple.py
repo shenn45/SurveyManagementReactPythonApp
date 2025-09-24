@@ -3,6 +3,7 @@ from graphene import ObjectType, List, Field, String, Int, Boolean, Float, DateT
 from typing import Optional
 from datetime import datetime
 import uuid
+import json
 import crud
 
 # Survey List Response Type (matches frontend expectation)
@@ -122,6 +123,16 @@ class TownshipListResponse(ObjectType):
     total = Int()
     page = Int()
     size = Int()
+
+# UserSettings Type
+class UserSettingsType(ObjectType):
+    UserSettingsId = String()
+    UserId = String()
+    SettingsType = String()
+    SettingsData = String()  # JSON string
+    IsActive = Boolean()
+    CreatedDate = DateTime()
+    ModifiedDate = DateTime()
 
 def model_to_survey(survey):
     """Convert Survey model to GraphQL type"""
@@ -269,6 +280,21 @@ def model_to_township(township):
         ModifiedBy=getattr(township, 'ModifiedBy', '')
     )
 
+def model_to_user_settings(user_settings):
+    """Convert UserSettings model to GraphQL type"""
+    import json
+    if not user_settings:
+        return None
+    return UserSettingsType(
+        UserSettingsId=getattr(user_settings, 'UserSettingsId', ''),
+        UserId=getattr(user_settings, 'UserId', ''),
+        SettingsType=getattr(user_settings, 'SettingsType', ''),
+        SettingsData=json.dumps(getattr(user_settings, 'SettingsData', {})),
+        IsActive=getattr(user_settings, 'IsActive', True),
+        CreatedDate=getattr(user_settings, 'CreatedDate', None),
+        ModifiedDate=getattr(user_settings, 'ModifiedDate', None)
+    )
+
 def model_to_survey_type(survey_type):
     """Convert SurveyType model to GraphQL type"""
     if not survey_type:
@@ -302,6 +328,8 @@ class Query(ObjectType):
     township = Field(TownshipType, townshipId=String(required=True))
     surveyTypes = Field(List(SurveyTypeType))
     surveyStatuses = Field(List(SurveyStatusType))
+    userSettings = Field(UserSettingsType, settingsType=String(required=True))
+    allUserSettings = Field(List(UserSettingsType))
 
     def resolve_surveys(self, info, skip=0, limit=100, search=None):
         try:
@@ -405,6 +433,28 @@ class Query(ObjectType):
             return [model_to_survey_status(ss) for ss in survey_statuses]
         except Exception as e:
             print(f"Error resolving survey statuses: {e}")
+            return []
+
+    def resolve_userSettings(self, info, settingsType):
+        try:
+            # For now, use a hardcoded user ID - in real app this would come from authentication
+            user_id = "user123"
+            user_settings = crud.get_user_settings(user_id, settingsType)
+            if user_settings:
+                return model_to_user_settings(user_settings)
+            return None
+        except Exception as e:
+            print(f"Error resolving user settings: {e}")
+            return None
+
+    def resolve_allUserSettings(self, info):
+        try:
+            # For now, use a hardcoded user ID - in real app this would come from authentication
+            user_id = "user123"
+            all_settings = crud.get_all_user_settings(user_id)
+            return [model_to_user_settings(settings) for settings in all_settings]
+        except Exception as e:
+            print(f"Error resolving all user settings: {e}")
             return []
 
 # Create simple schema with queries and mutations
@@ -591,6 +641,10 @@ class SurveyUpdateInput(graphene.InputObjectType):
     IsScanned = Boolean()
     IsDelivered = Boolean()
     IsActive = Boolean()
+
+class UserSettingsInput(graphene.InputObjectType):
+    SettingsType = String(required=True)
+    SettingsData = String(required=True)  # JSON string
 
 class CreateCustomerMutation(graphene.Mutation):
     class Arguments:
@@ -1049,6 +1103,38 @@ class UpdateSurveyMutation(graphene.Mutation):
             traceback.print_exc()
             return UpdateSurveyMutation(survey=None)
 
+class UpsertUserSettingsMutation(graphene.Mutation):
+    class Arguments:
+        input = UserSettingsInput(required=True)
+    
+    userSettings = Field(UserSettingsType)
+    
+    def mutate(self, info, input):
+        try:
+            # For now, use a hardcoded user ID - in real app this would come from authentication
+            user_id = "user123"
+            settings_type = input.SettingsType
+            settings_data = json.loads(input.SettingsData)
+            
+            upserted_settings = crud.upsert_user_settings(
+                user_id=user_id,
+                settings_type=settings_type,
+                settings_data=settings_data
+            )
+            
+            if upserted_settings:
+                print(f"User settings upserted successfully: {user_id}, {settings_type}")
+                return UpsertUserSettingsMutation(userSettings=model_to_user_settings(upserted_settings))
+            else:
+                print(f"Failed to upsert user settings: {user_id}, {settings_type}")
+                return UpsertUserSettingsMutation(userSettings=None)
+                
+        except Exception as e:
+            print(f"Error upserting user settings: {e}")
+            import traceback
+            traceback.print_exc()
+            return UpsertUserSettingsMutation(userSettings=None)
+
 class Mutation(graphene.ObjectType):
     createCustomer = CreateCustomerMutation.Field()
     updateCustomer = UpdateCustomerMutation.Field()
@@ -1064,5 +1150,6 @@ class Mutation(graphene.ObjectType):
     createSurveyType = CreateSurveyTypeMutation.Field()
     createSurveyStatus = CreateSurveyStatusMutation.Field()
     updateSurveyStatus = UpdateSurveyStatusMutation.Field()
+    upsertUserSettings = UpsertUserSettingsMutation.Field()
 
 schema = graphene.Schema(query=Query, mutation=Mutation)

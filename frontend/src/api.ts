@@ -11,7 +11,9 @@ import {
   PropertyListResponse,
   SurveyType,
   SurveyStatus,
-  Township
+  Township,
+  UserSettings,
+  UserSettingsUpdate
 } from './types';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
@@ -90,4 +92,22 @@ export const lookupApi = {
   
   getTownships: (): Promise<Township[]> =>
     api.get('/lookup/townships').then(response => response.data),
+};
+
+// User Settings API
+export const userSettingsApi = {
+  getSettings: (settingsType: string): Promise<UserSettings> =>
+    api.get(`/user-settings/${settingsType}`).then(response => response.data),
+  
+  getAllSettings: (): Promise<UserSettings[]> =>
+    api.get('/user-settings').then(response => response.data),
+  
+  upsertSettings: (settingsType: string, settingsData: Record<string, any>): Promise<UserSettings> =>
+    api.put(`/user-settings/${settingsType}/upsert`, settingsData).then(response => response.data),
+  
+  updateSettings: (settingsType: string, settingsData: UserSettingsUpdate): Promise<UserSettings> =>
+    api.put(`/user-settings/${settingsType}`, settingsData).then(response => response.data),
+  
+  deleteSettings: (settingsType: string): Promise<void> =>
+    api.delete(`/user-settings/${settingsType}`).then(response => response.data),
 };
