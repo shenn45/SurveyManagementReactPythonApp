@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { EyeIcon, EyeSlashIcon, AdjustmentsHorizontalIcon, XMarkIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { useSurveys, useSurveyStatuses, useUpdateSurvey, useCreateSurvey, useCustomers, useSurveyTypes, useUpdateSurveyStatus, useDefaultBoardConfiguration, useUpdateBoardConfiguration, useBoardConfigurationBySlug } from '../hooks/useGraphQLApi';
@@ -317,8 +317,8 @@ export default function Board() {
     IsDelivered: false,
   });
   
-  // Fetch all surveys (we'll handle filtering on frontend for board view)
-  const { data: surveysData, loading: surveysLoading, error: surveysError, refetch } = useSurveys(1, 1000, searchTerm || undefined);
+  // Fetch all surveys once on initial load (no search parameter - load everything)
+  const { data: surveysData, loading: surveysLoading, error: surveysError, refetch } = useSurveys(1, 1000);
   const { data: statusesData, loading: statusesLoading } = useSurveyStatuses();
   const { update: updateSurvey, loading: updateLoading } = useUpdateSurvey();
   const { create: createSurvey, loading: createLoading } = useCreateSurvey();
@@ -338,6 +338,35 @@ export default function Board() {
 
   const [groupedSurveys, setGroupedSurveys] = useState<{ [key: string]: Survey[] }>({});
 
+  // Memoize the search handler to prevent recreating on every render
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('Search input changed:', e.target.value);
+    e.preventDefault(); // Prevent any default form behavior
+    setSearchTerm(e.target.value);
+  }, []);
+
+  // Memoize client-side filtered surveys for instant search results
+  const filteredSurveys = useMemo(() => {
+    if (!surveysData?.surveys) return [];
+    
+    if (!searchTerm.trim()) {
+      return surveysData.surveys;
+    }
+    
+    const searchLower = searchTerm.toLowerCase();
+    return surveysData.surveys.filter(survey => 
+      survey.SurveyNumber?.toLowerCase().includes(searchLower) ||
+      survey.Title?.toLowerCase().includes(searchLower) ||
+      survey.Description?.toLowerCase().includes(searchLower) ||
+      survey.PurposeCode?.toLowerCase().includes(searchLower) ||
+      // Search by customer name if available
+      (customersData?.customers?.find(c => c.CustomerId === survey.CustomerId)?.CompanyName?.toLowerCase().includes(searchLower)) ||
+      // Search by survey type if available  
+      (surveyTypesData?.find(st => st.SurveyTypeId === survey.SurveyTypeId)?.SurveyTypeName?.toLowerCase().includes(searchLower))
+    );
+  }, [surveysData?.surveys, searchTerm, customersData?.customers, surveyTypesData]);
+
+
   // Initialize column order when statuses are loaded or settings change
   useEffect(() => {
     if (statusesData && statusesData.length > 0) {
@@ -352,43 +381,53 @@ export default function Board() {
           .map(status => status.SurveyStatusId);
         
         const finalOrder = [...validOrder, ...newStatuses];
-        // Only update if the order has changed
-        if (JSON.stringify(finalOrder) !== JSON.stringify(boardSettings.columnOrder)) {
+        // Only update if the order has actually changed (deep comparison)
+        if (JSON.stringify(finalOrder.sort()) !== JSON.stringify(boardSettings.columnOrder.sort())) {
           updateColumnOrder(finalOrder);
         }
       } else {
         // First time - use default order
-        updateColumnOrder(statusesData.map(status => status.SurveyStatusId));
+        const defaultOrder = statusesData.map(status => status.SurveyStatusId);
+        // Only update if different from current
+        if (JSON.stringify(defaultOrder.sort()) !== JSON.stringify(boardSettings.columnOrder.sort())) {
+          updateColumnOrder(defaultOrder);
+        }
       }
     }
-  }, [statusesData, boardSettings.columnOrder, updateColumnOrder]);
+  }, [statusesData]); // Remove boardSettings.columnOrder and updateColumnOrder from dependencies
 
   // Sync board configuration with local state
   useEffect(() => {
-    if (boardConfiguration && boardConfiguration.BoardName) {
+    if (boardConfiguration?.BoardName && boardConfiguration.BoardName !== boardName) {
       setBoardName(boardConfiguration.BoardName);
-    } else if (!boardConfigLoading && !boardConfiguration) {
-      // If loading is complete but no configuration found, use default
+    } else if (!boardConfigLoading && !boardConfiguration && boardName !== 'Survey Board') {
+      // Only set if different to prevent unnecessary updates
       setBoardName('Survey Board');
     }
-  }, [boardConfiguration, boardConfigLoading]);
+  }, [boardConfiguration, boardConfigLoading]); // Remove boardName from dependencies
 
-  // Sync board configuration with local state
-  useEffect(() => {
-    if (surveysData?.surveys && statusesData && !updatingSurveyId) {
-      // Group surveys by their status (only when not updating to avoid race conditions)
-      const grouped = surveysData.surveys.reduce((acc, survey) => {
-        const statusId = survey.StatusId || 'unknown';
-        if (!acc[statusId]) {
-          acc[statusId] = [];
-        }
-        acc[statusId].push(survey);
-        return acc;
-      }, {} as { [key: string]: Survey[] });
-
-      setGroupedSurveys(grouped);
+  // Memoize the surveys grouping to prevent constant recalculation
+  const memoizedGroupedSurveys = useMemo(() => {
+    if (!filteredSurveys || !statusesData || updatingSurveyId) {
+      return groupedSurveys; // Return existing state if updating
     }
-  }, [surveysData, statusesData, updatingSurveyId]);
+
+    return filteredSurveys.reduce((acc, survey) => {
+      const statusId = survey.StatusId || 'unknown';
+      if (!acc[statusId]) {
+        acc[statusId] = [];
+      }
+      acc[statusId].push(survey);
+      return acc;
+    }, {} as { [key: string]: Survey[] });
+  }, [filteredSurveys, statusesData, updatingSurveyId, groupedSurveys]);
+
+  // Update the groupedSurveys effect to use memoized value
+  useEffect(() => {
+    if (JSON.stringify(memoizedGroupedSurveys) !== JSON.stringify(groupedSurveys)) {
+      setGroupedSurveys(memoizedGroupedSurveys);
+    }
+  }, [memoizedGroupedSurveys]); // Remove groupedSurveys from dependency
 
   const handleHideColumn = (statusId: string) => {
     hideColumn(statusId);
@@ -402,15 +441,15 @@ export default function Board() {
     showAllColumns();
   };
 
-  // Create survey handler
-  const handleCreateSurvey = (statusId: string) => {
+  // Memoize create survey handler
+  const handleCreateSurvey = useCallback((statusId: string) => {
     setPrefilledStatusId(statusId);
     setFormData(prev => ({ ...prev, StatusId: statusId }));
     setIsCreateModalOpen(true);
-  };
+  }, []);
 
-  // Edit survey handler
-  const handleEditSurvey = (survey: Survey) => {
+  // Memoize edit survey handler
+  const handleEditSurvey = useCallback((survey: Survey) => {
     setEditingSurvey(survey);
     setFormData({
       SurveyNumber: survey.SurveyNumber,
@@ -432,10 +471,10 @@ export default function Board() {
       IsDelivered: survey.IsDelivered,
     });
     setIsEditModalOpen(true);
-  };
+  }, []);
 
-  // Modal handlers
-  const resetForm = () => {
+  // Memoize modal handlers
+  const resetForm = useCallback(() => {
     setFormData({
       SurveyNumber: '',
       CustomerId: undefined,
@@ -455,17 +494,17 @@ export default function Board() {
       IsScanned: false,
       IsDelivered: false,
     });
-  };
+  }, [prefilledStatusId]);
 
-  const handleModalClose = () => {
+  const handleModalClose = useCallback(() => {
     setIsCreateModalOpen(false);
     setIsEditModalOpen(false);
     setEditingSurvey(null);
     setPrefilledStatusId(null);
     resetForm();
-  };
+  }, [resetForm]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (editingSurvey) {
@@ -478,10 +517,10 @@ export default function Board() {
     } catch (error) {
       console.error('Failed to save survey:', error);
     }
-  };
+  }, [editingSurvey, updateSurvey, formData, createSurvey, refetch, handleModalClose]);
 
-  // Column management handlers
-  const handleRenameStatus = async (status: SurveyStatus, newName: string) => {
+  // Memoize column management handlers
+  const handleRenameStatus = useCallback(async (status: SurveyStatus, newName: string) => {
     if (!newName.trim() || newName === status.StatusName) {
       setEditingStatus(null);
       return;
@@ -504,20 +543,20 @@ export default function Board() {
       console.error('Error renaming status:', error);
       setEditingStatus(null);
     }
-  };
+  }, [updateSurveyStatus]);
 
-  // Column drag and drop handlers
-  const handleColumnDragStart = (e: React.DragEvent, statusId: string) => {
+  // Memoize column drag and drop handlers
+  const handleColumnDragStart = useCallback((e: React.DragEvent, statusId: string) => {
     setDraggedColumn(statusId);
     e.dataTransfer.effectAllowed = 'move';
-  };
+  }, []);
 
-  const handleColumnDragOver = (e: React.DragEvent) => {
+  const handleColumnDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-  };
+  }, []);
 
-  const handleColumnDrop = (e: React.DragEvent, targetStatusId: string) => {
+  const handleColumnDrop = useCallback((e: React.DragEvent, targetStatusId: string) => {
     e.preventDefault();
     
     if (!draggedColumn || draggedColumn === targetStatusId) {
@@ -535,22 +574,22 @@ export default function Board() {
     
     updateColumnOrder(newOrder);
     setDraggedColumn(null);
-  };
+  }, [draggedColumn, boardSettings.columnOrder, updateColumnOrder]);
 
-  // Drag and drop handlers
-  const handleDragStart = (survey: Survey) => {
+  // Memoize drag and drop handlers
+  const handleDragStart = useCallback((survey: Survey) => {
     setDraggedSurvey(survey);
-  };
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault(); // Allow drop
-  };
+  }, []);
 
-  const handleDragEnter = (statusId: string) => {
+  const handleDragEnter = useCallback((statusId: string) => {
     setDragOverColumn(statusId);
-  };
+  }, []);
 
-  const handleDrop = async (e: React.DragEvent, targetStatusId: string) => {
+  const handleDrop = useCallback(async (e: React.DragEvent, targetStatusId: string) => {
     e.preventDefault();
     setDragOverColumn(null);
 
@@ -609,15 +648,15 @@ export default function Board() {
         setUpdatingSurveyId(null);
       }, 100);
     }
-  };
+  }, [draggedSurvey, updateSurvey, refetch]);
 
-  // Board name functions
-  const handleEditBoardName = () => {
+  // Memoize board name functions
+  const handleEditBoardName = useCallback(() => {
     setTempBoardName(boardName);
     setIsEditingBoardName(true);
-  };
+  }, [boardName]);
 
-  const handleSaveBoardName = async () => {
+  const handleSaveBoardName = useCallback(async () => {
     if (tempBoardName.trim() && tempBoardName.trim() !== boardName) {
       try {
         if (boardConfiguration) {
@@ -645,20 +684,40 @@ export default function Board() {
     }
     setIsEditingBoardName(false);
     setTempBoardName('');
-  };
+  }, [tempBoardName, boardName, boardConfiguration, updateBoardConfiguration, refetchBoardConfig, boardSlug, navigate]);
 
-  const handleCancelEditBoardName = () => {
+  const handleCancelEditBoardName = useCallback(() => {
     setIsEditingBoardName(false);
     setTempBoardName('');
-  };
+  }, []);
 
-  const handleBoardNameKeyDown = (e: React.KeyboardEvent) => {
+  const handleBoardNameKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSaveBoardName();
     } else if (e.key === 'Escape') {
       handleCancelEditBoardName();
     }
-  };
+  }, [handleSaveBoardName, handleCancelEditBoardName]);
+
+  // Memoize computed values to prevent unnecessary recalculations (MUST be before early returns!)
+  const activeStatuses = useMemo(() => 
+    statusesData?.filter(status => status.IsActive) || [], 
+    [statusesData]
+  );
+
+  const hiddenStatuses = useMemo(() => 
+    activeStatuses.filter(status => boardSettings.hiddenColumns.includes(status.SurveyStatusId)), 
+    [activeStatuses, boardSettings.hiddenColumns]
+  );
+  
+  // Memoize ordered statuses based on boardSettings.columnOrder
+  const orderedStatuses = useMemo(() => 
+    boardSettings.columnOrder
+      .map(id => activeStatuses.find(status => status.SurveyStatusId === id))
+      .filter((status): status is SurveyStatus => status !== undefined)
+      .concat(activeStatuses.filter(status => !boardSettings.columnOrder.includes(status.SurveyStatusId))), 
+    [boardSettings.columnOrder, activeStatuses]
+  );
 
   if (surveysLoading || statusesLoading || settingsLoading) {
     return (
@@ -703,15 +762,6 @@ export default function Board() {
       </p>
     </div>
   );
-
-  const activeStatuses = statusesData?.filter(status => status.IsActive) || [];
-  const hiddenStatuses = activeStatuses.filter(status => boardSettings.hiddenColumns.includes(status.SurveyStatusId));
-  
-  // Order statuses based on boardSettings.columnOrder, then add any missing ones
-  const orderedStatuses = boardSettings.columnOrder
-    .map(id => activeStatuses.find(status => status.SurveyStatusId === id))
-    .filter((status): status is SurveyStatus => status !== undefined)
-    .concat(activeStatuses.filter(status => !boardSettings.columnOrder.includes(status.SurveyStatusId)));
 
   return (
     <div className="p-8">
@@ -777,16 +827,38 @@ export default function Board() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="flex-1 max-w-md">
-              <input
-                type="text"
-                placeholder="Search surveys..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search surveys by number, title, description, customer, or type..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                    title="Clear search"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
             <div className="text-sm text-gray-500">
-              Total: {surveysData?.total || 0} surveys
+              {searchTerm ? (
+                <>
+                  Showing {filteredSurveys.length} of {surveysData?.total || 0} surveys
+                  {filteredSurveys.length !== (surveysData?.total || 0) && (
+                    <span className="ml-2 text-blue-600 font-medium">
+                      (filtered)
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>Total: {surveysData?.total || 0} surveys</>
+              )}
             </div>
           </div>
           

@@ -12,6 +12,11 @@ from botocore.exceptions import ClientError
 import uuid
 from datetime import datetime
 
+# Add environment variables for local DynamoDB at the top
+os.environ['AWS_ACCESS_KEY_ID'] = 'fake'
+os.environ['AWS_SECRET_ACCESS_KEY'] = 'fake'
+os.environ['DYNAMODB_ENDPOINT_URL'] = 'http://localhost:8001'
+
 # Add the backend directory to the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
