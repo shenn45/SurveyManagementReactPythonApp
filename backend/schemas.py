@@ -307,3 +307,25 @@ class PropertyListResponse(BaseModel):
     total: int
     page: int
     size: int
+
+# UserSettings Schemas
+class UserSettingsBase(BaseModel):
+    UserId: str
+    SettingsType: str
+    SettingsData: dict
+    IsActive: bool = True
+
+class UserSettingsCreate(UserSettingsBase):
+    pass
+
+class UserSettingsUpdate(BaseModel):
+    SettingsData: Optional[dict] = None
+    IsActive: Optional[bool] = None
+
+class UserSettings(UserSettingsBase):
+    UserSettingsId: str
+    CreatedDate: datetime
+    ModifiedDate: datetime
+    
+    class Config:
+        from_attributes = True

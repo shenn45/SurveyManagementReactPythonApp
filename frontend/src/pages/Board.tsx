@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { EyeIcon, EyeSlashIcon, AdjustmentsHorizontalIcon, XMarkIcon, PlusIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { useSurveys, useSurveyStatuses, useUpdateSurvey, useCreateSurvey, useCustomers, useSurveyTypes, useCreateSurveyStatus, useUpdateSurveyStatus } from '../hooks/useGraphQLApi';
+import { useBoardSettings } from '../hooks/useBoardSettings';
 import { Survey, SurveyStatus, SurveyCreate } from '../types';
 
 interface SurveyCard {
@@ -263,16 +264,6 @@ const BoardColumn: React.FC<BoardColumn> = ({
 
 export default function Board() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => {
-    // Load hidden columns from localStorage on initial render
-    try {
-      const saved = localStorage.getItem('boardHiddenColumns');
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch (error) {
-      console.warn('Failed to load hidden columns from localStorage:', error);
-      return new Set();
-    }
-  });
   const [draggedSurvey, setDraggedSurvey] = useState<Survey | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [updatingSurveyId, setUpdatingSurveyId] = useState<string | null>(null);
@@ -284,8 +275,18 @@ export default function Board() {
   const [editingSurvey, setEditingSurvey] = useState<Survey | null>(null);
   const [prefilledStatusId, setPrefilledStatusId] = useState<string | null>(null);
   
+  // Board settings hook (replaces localStorage)
+  const {
+    settings: boardSettings,
+    isLoading: settingsLoading,
+    error: settingsError,
+    hideColumn,
+    showColumn,
+    showAllColumns,
+    updateColumnOrder
+  } = useBoardSettings();
+  
   // Column management state
-  const [columnOrder, setColumnOrder] = useState<string[]>([]);
   const [editingStatus, setEditingStatus] = useState<SurveyStatus | null>(null);
   const [newStatusName, setNewStatusName] = useState('');
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
@@ -321,52 +322,30 @@ export default function Board() {
 
   const [groupedSurveys, setGroupedSurveys] = useState<{ [key: string]: Survey[] }>({});
 
-  // Save hidden columns to localStorage whenever it changes
-  useEffect(() => {
-    try {
-      localStorage.setItem('boardHiddenColumns', JSON.stringify(Array.from(hiddenColumns)));
-    } catch (error) {
-      console.warn('Failed to save hidden columns to localStorage:', error);
-    }
-  }, [hiddenColumns]);
-
-  // Initialize and save column order
+  // Initialize column order when statuses are loaded or settings change
   useEffect(() => {
     if (statusesData && statusesData.length > 0) {
-      try {
-        const saved = localStorage.getItem('boardColumnOrder');
-        if (saved) {
-          const savedOrder = JSON.parse(saved);
-          // Filter to only include statuses that still exist
-          const validOrder = savedOrder.filter((id: string) => 
-            statusesData.some(status => status.SurveyStatusId === id)
-          );
-          // Add any new statuses that aren't in the saved order
-          const newStatuses = statusesData
-            .filter(status => !validOrder.includes(status.SurveyStatusId))
-            .map(status => status.SurveyStatusId);
-          setColumnOrder([...validOrder, ...newStatuses]);
-        } else {
-          // First time - use default order
-          setColumnOrder(statusesData.map(status => status.SurveyStatusId));
+      // If we have saved column order, validate and use it
+      if (boardSettings.columnOrder.length > 0) {
+        const validOrder = boardSettings.columnOrder.filter((id: string) => 
+          statusesData.some(status => status.SurveyStatusId === id)
+        );
+        // Add any new statuses that aren't in the saved order
+        const newStatuses = statusesData
+          .filter(status => !validOrder.includes(status.SurveyStatusId))
+          .map(status => status.SurveyStatusId);
+        
+        const finalOrder = [...validOrder, ...newStatuses];
+        // Only update if the order has changed
+        if (JSON.stringify(finalOrder) !== JSON.stringify(boardSettings.columnOrder)) {
+          updateColumnOrder(finalOrder);
         }
-      } catch (error) {
-        console.warn('Failed to load column order from localStorage:', error);
-        setColumnOrder(statusesData.map(status => status.SurveyStatusId));
+      } else {
+        // First time - use default order
+        updateColumnOrder(statusesData.map(status => status.SurveyStatusId));
       }
     }
-  }, [statusesData]);
-
-  // Save column order to localStorage whenever it changes
-  useEffect(() => {
-    if (columnOrder.length > 0) {
-      try {
-        localStorage.setItem('boardColumnOrder', JSON.stringify(columnOrder));
-      } catch (error) {
-        console.warn('Failed to save column order to localStorage:', error);
-      }
-    }
-  }, [columnOrder]);
+  }, [statusesData, boardSettings.columnOrder, updateColumnOrder]);
 
   useEffect(() => {
     if (surveysData?.surveys && statusesData) {
@@ -385,24 +364,15 @@ export default function Board() {
   }, [surveysData, statusesData]);
 
   const handleHideColumn = (statusId: string) => {
-    setHiddenColumns(prev => {
-      const newSet = new Set(prev);
-      newSet.add(statusId);
-      return newSet;
-    });
+    hideColumn(statusId);
   };
 
   const handleShowColumn = (statusId: string) => {
-    setHiddenColumns(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(statusId);
-      return newSet;
-    });
+    showColumn(statusId);
   };
 
   const handleShowAllColumns = () => {
-    setHiddenColumns(new Set());
-    // This will trigger the useEffect above to save to localStorage
+    showAllColumns();
   };
 
   // Create survey handler
@@ -544,7 +514,7 @@ export default function Board() {
       return;
     }
 
-    const newOrder = [...columnOrder];
+    const newOrder = [...boardSettings.columnOrder];
     const draggedIndex = newOrder.indexOf(draggedColumn);
     const targetIndex = newOrder.indexOf(targetStatusId);
     
@@ -552,7 +522,7 @@ export default function Board() {
     newOrder.splice(draggedIndex, 1);
     newOrder.splice(targetIndex, 0, draggedColumn);
     
-    setColumnOrder(newOrder);
+    updateColumnOrder(newOrder);
     setDraggedColumn(null);
   };
 
@@ -630,7 +600,7 @@ export default function Board() {
     }
   };
 
-  if (surveysLoading || statusesLoading) {
+  if (surveysLoading || statusesLoading || settingsLoading) {
     return (
       <div className="p-8">
         <div className="animate-pulse">
@@ -665,14 +635,23 @@ export default function Board() {
     );
   }
 
+  // Show settings error as warning (non-blocking)
+  const settingsWarning = settingsError && (
+    <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-md p-3">
+      <p className="text-yellow-800 text-sm">
+        ⚠️ Unable to load board preferences from database. Using local settings as fallback.
+      </p>
+    </div>
+  );
+
   const activeStatuses = statusesData?.filter(status => status.IsActive) || [];
-  const hiddenStatuses = activeStatuses.filter(status => hiddenColumns.has(status.SurveyStatusId));
+  const hiddenStatuses = activeStatuses.filter(status => boardSettings.hiddenColumns.includes(status.SurveyStatusId));
   
-  // Order statuses based on columnOrder, then add any missing ones
-  const orderedStatuses = columnOrder
+  // Order statuses based on boardSettings.columnOrder, then add any missing ones
+  const orderedStatuses = boardSettings.columnOrder
     .map(id => activeStatuses.find(status => status.SurveyStatusId === id))
     .filter((status): status is SurveyStatus => status !== undefined)
-    .concat(activeStatuses.filter(status => !columnOrder.includes(status.SurveyStatusId)));
+    .concat(activeStatuses.filter(status => !boardSettings.columnOrder.includes(status.SurveyStatusId)));
 
   return (
     <div className="p-8">
@@ -682,6 +661,9 @@ export default function Board() {
           Kanban-style view of surveys organized by status
         </p>
       </div>
+
+      {/* Settings error warning */}
+      {settingsWarning}
 
       {/* Search and filters */}
       <div className="mb-6">
@@ -735,7 +717,7 @@ export default function Board() {
       {/* Board columns */}
       <div className="flex space-x-6 overflow-x-auto pb-6">
         {orderedStatuses
-          .filter(status => !hiddenColumns.has(status.SurveyStatusId))
+          .filter(status => !boardSettings.hiddenColumns.includes(status.SurveyStatusId))
           .map((status) => {
             const surveys = groupedSurveys[status.SurveyStatusId] || [];
             return (
@@ -772,7 +754,7 @@ export default function Board() {
         {/* Unknown status column for surveys without a valid status */}
         {groupedSurveys['unknown'] && 
          groupedSurveys['unknown'].length > 0 && 
-         !hiddenColumns.has('unknown') && (
+         !boardSettings.hiddenColumns.includes('unknown') && (
           <BoardColumn
             status={{
               SurveyStatusId: 'unknown',

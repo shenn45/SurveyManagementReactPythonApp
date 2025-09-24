@@ -143,7 +143,8 @@ def setup_all_tables():
         'SurveyStatuses', 
         'Surveys',
         'SurveyFiles',
-        'Documents'
+        'Documents',
+        'UserSettings'
     ]
     
     print(f"\n📋 Required tables: {all_tables}")
@@ -203,7 +204,7 @@ def verify_tables():
     
     required_tables = [
         'Customers', 'Surveys', 'Properties', 'Townships',
-        'SurveyTypes', 'SurveyStatuses'
+        'SurveyTypes', 'SurveyStatuses', 'UserSettings'
     ]
     
     missing_tables = [t for t in required_tables if t not in existing_tables]
