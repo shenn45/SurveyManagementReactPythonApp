@@ -1030,3 +1030,172 @@ def delete_user_settings(user_settings_id: str) -> bool:
     except ClientError as e:
         print(f"Error deleting user settings {user_settings_id}: {e}")
         return False
+
+
+# Board Configuration CRUD operations
+def create_board_configuration(board_config: schemas.BoardConfigurationCreate) -> BoardConfiguration:
+    """Create a new board configuration"""
+    table = get_table('BoardConfigurations')
+    try:
+        # Create a slug from board name (simple version)
+        board_slug = board_config.BoardName.lower().replace(' ', '-').replace('_', '-')
+        # Remove special characters for URL safety
+        import re
+        board_slug = re.sub(r'[^a-z0-9\-]', '', board_slug)
+        
+        new_config = BoardConfiguration(
+            BoardName=board_config.BoardName,
+            BoardSlug=board_slug,
+            Description=board_config.Description,
+            UserId=board_config.UserId,
+            IsDefault=board_config.IsDefault,
+            CreatedBy="system"  # TODO: get from auth context
+        )
+        
+        serialized_config = serialize_item(new_config.dict())
+        table.put_item(Item=serialized_config)
+        
+        return new_config
+        
+    except ClientError as e:
+        print(f"Error creating board configuration: {e}")
+        return None
+
+
+def get_board_configuration(board_config_id: str) -> BoardConfiguration:
+    """Get a board configuration by ID"""
+    table = get_table('BoardConfigurations')
+    try:
+        response = table.get_item(Key={'BoardConfigId': board_config_id})
+        item = response.get('Item')
+        if item:
+            return BoardConfiguration(**deserialize_item(item))
+        return None
+        
+    except ClientError as e:
+        print(f"Error getting board configuration {board_config_id}: {e}")
+        return None
+
+
+def get_board_configuration_by_slug(board_slug: str) -> BoardConfiguration:
+    """Get a board configuration by slug"""
+    table = get_table('BoardConfigurations')
+    try:
+        response = table.query(
+            IndexName='BoardSlugIndex',
+            KeyConditionExpression=Key('BoardSlug').eq(board_slug),
+            FilterExpression=Attr('IsActive').eq(True)
+        )
+        items = response.get('Items', [])
+        if items:
+            return BoardConfiguration(**deserialize_item(items[0]))
+        return None
+        
+    except ClientError as e:
+        print(f"Error getting board configuration by slug {board_slug}: {e}")
+        return None
+
+
+def get_board_configurations() -> List[BoardConfiguration]:
+    """Get all active board configurations"""
+    table = get_table('BoardConfigurations')
+    try:
+        response = table.scan(
+            FilterExpression=Attr('IsActive').eq(True)
+        )
+        items = response.get('Items', [])
+        return [BoardConfiguration(**deserialize_item(item)) for item in items]
+        
+    except ClientError as e:
+        print(f"Error getting board configurations: {e}")
+        return []
+
+
+def get_default_board_configuration() -> BoardConfiguration:
+    """Get the default board configuration"""
+    table = get_table('BoardConfigurations')
+    try:
+        response = table.scan(
+            FilterExpression=Attr('IsDefault').eq(True) & Attr('IsActive').eq(True)
+        )
+        items = response.get('Items', [])
+        if items:
+            return BoardConfiguration(**deserialize_item(items[0]))
+        return None
+        
+    except ClientError as e:
+        print(f"Error getting default board configuration: {e}")
+        return None
+
+
+def update_board_configuration(board_config_id: str, board_config: schemas.BoardConfigurationUpdate) -> BoardConfiguration:
+    """Update a board configuration"""
+    table = get_table('BoardConfigurations')
+    try:
+        # Build update expression
+        update_expression = "SET ModifiedDate = :modified_date, ModifiedBy = :modified_by"
+        expression_values = {
+            ':modified_date': serialize_datetime(datetime.utcnow()),
+            ':modified_by': "system"  # TODO: get from auth context
+        }
+        
+        if board_config.BoardName is not None:
+            # Create new slug from updated name
+            board_slug = board_config.BoardName.lower().replace(' ', '-').replace('_', '-')
+            import re
+            board_slug = re.sub(r'[^a-z0-9\-]', '', board_slug)
+            
+            update_expression += ", BoardName = :board_name, BoardSlug = :board_slug"
+            expression_values[':board_name'] = board_config.BoardName
+            expression_values[':board_slug'] = board_slug
+        
+        if board_config.Description is not None:
+            update_expression += ", Description = :description"
+            expression_values[':description'] = board_config.Description
+        
+        if board_config.IsDefault is not None:
+            update_expression += ", IsDefault = :is_default"
+            expression_values[':is_default'] = board_config.IsDefault
+        
+        if board_config.IsActive is not None:
+            update_expression += ", IsActive = :is_active"
+            expression_values[':is_active'] = board_config.IsActive
+        
+        # Update in DynamoDB
+        response = table.update_item(
+            Key={'BoardConfigId': board_config_id},
+            UpdateExpression=update_expression,
+            ExpressionAttributeValues=expression_values,
+            ReturnValues='ALL_NEW'
+        )
+        
+        # Return updated board configuration
+        item = response.get('Attributes')
+        if item:
+            return BoardConfiguration(**deserialize_item(item))
+        return None
+        
+    except ClientError as e:
+        print(f"Error updating board configuration {board_config_id}: {e}")
+        return None
+
+
+def delete_board_configuration(board_config_id: str) -> bool:
+    """Soft delete a board configuration by setting IsActive to False"""
+    table = get_table('BoardConfigurations')
+    try:
+        # Update IsActive to False instead of actually deleting
+        table.update_item(
+            Key={'BoardConfigId': board_config_id},
+            UpdateExpression='SET IsActive = :is_active, ModifiedDate = :modified_date, ModifiedBy = :modified_by',
+            ExpressionAttributeValues={
+                ':is_active': False,
+                ':modified_date': serialize_datetime(datetime.utcnow()),
+                ':modified_by': "system"  # TODO: get from auth context
+            }
+        )
+        return True
+        
+    except ClientError as e:
+        print(f"Error deleting board configuration {board_config_id}: {e}")
+        return False

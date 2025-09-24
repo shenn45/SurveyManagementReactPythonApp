@@ -79,10 +79,10 @@ For local development, you can use DynamoDB Local with Docker:
 
 ```bash
 # Start DynamoDB Local
-docker run -p 8000:8000 amazon/dynamodb-local
+docker run -p 8001:8001 amazon/dynamodb-local
 
 # Set environment variable
-export DYNAMODB_ENDPOINT_URL=http://localhost:8000
+export DYNAMODB_ENDPOINT_URL=http://localhost:8001
 ```
 
 ### Database Table Creation

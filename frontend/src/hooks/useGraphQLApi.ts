@@ -24,6 +24,13 @@ import {
   CREATE_TOWNSHIP,
   UPDATE_TOWNSHIP,
   DELETE_TOWNSHIP,
+  GET_BOARD_CONFIGURATIONS,
+  GET_BOARD_CONFIGURATION,
+  GET_BOARD_CONFIGURATION_BY_SLUG,
+  GET_DEFAULT_BOARD_CONFIGURATION,
+  CREATE_BOARD_CONFIGURATION,
+  UPDATE_BOARD_CONFIGURATION,
+  DELETE_BOARD_CONFIGURATION,
 } from '../graphql/queries';
 
 import {
@@ -40,7 +47,10 @@ import {
   SurveyStatus,
   Township,
   TownshipCreate,
-  TownshipListResponse
+  TownshipListResponse,
+  BoardConfiguration,
+  BoardConfigurationCreate,
+  BoardConfigurationUpdate
 } from '../types';
 
 // Customer hooks
@@ -396,6 +406,105 @@ export const useDeleteTownship = () => {
       refetchQueries: [GET_TOWNSHIPS],
     });
     return (result.data as any).deleteTownship.success;
+  };
+
+  return { remove, loading, error };
+};
+
+// Board Configuration hooks
+export const useBoardConfigurations = () => {
+  const { data, loading, error, refetch } = useQuery(GET_BOARD_CONFIGURATIONS);
+
+  return {
+    data: (data as any)?.boardConfigurations as BoardConfiguration[] | undefined,
+    loading,
+    error,
+    refetch,
+  };
+};
+
+export const useBoardConfiguration = (boardConfigId: string) => {
+  const { data, loading, error } = useQuery(GET_BOARD_CONFIGURATION, {
+    variables: { boardConfigId },
+    skip: !boardConfigId,
+  });
+
+  return {
+    data: (data as any)?.boardConfiguration as BoardConfiguration | undefined,
+    loading,
+    error,
+  };
+};
+
+export const useBoardConfigurationBySlug = (boardSlug: string) => {
+  const { data, loading, error, refetch } = useQuery(GET_BOARD_CONFIGURATION_BY_SLUG, {
+    variables: { boardSlug },
+    skip: !boardSlug,
+  });
+
+  return {
+    data: (data as any)?.boardConfigurationBySlug as BoardConfiguration | undefined,
+    loading,
+    error,
+    refetch,
+  };
+};
+
+export const useDefaultBoardConfiguration = () => {
+  const { data, loading, error, refetch } = useQuery(GET_DEFAULT_BOARD_CONFIGURATION);
+
+  return {
+    data: (data as any)?.defaultBoardConfiguration as BoardConfiguration | undefined,
+    loading,
+    error,
+    refetch,
+  };
+};
+
+export const useCreateBoardConfiguration = () => {
+  const [createBoardConfiguration, { loading, error }] = useMutation(CREATE_BOARD_CONFIGURATION);
+
+  const create = async (boardConfig: BoardConfigurationCreate): Promise<BoardConfiguration> => {
+    const result = await createBoardConfiguration({
+      variables: {
+        boardConfig,
+      },
+      refetchQueries: [GET_BOARD_CONFIGURATIONS, GET_DEFAULT_BOARD_CONFIGURATION],
+    });
+    return (result.data as any).createBoardConfiguration.boardConfiguration;
+  };
+
+  return { create, loading, error };
+};
+
+export const useUpdateBoardConfiguration = () => {
+  const [updateBoardConfiguration, { loading, error }] = useMutation(UPDATE_BOARD_CONFIGURATION);
+
+  const update = async (id: string, boardConfig: BoardConfigurationUpdate): Promise<BoardConfiguration> => {
+    const result = await updateBoardConfiguration({
+      variables: {
+        boardConfigId: id,
+        boardConfig,
+      },
+      refetchQueries: [GET_BOARD_CONFIGURATIONS, GET_BOARD_CONFIGURATION, GET_DEFAULT_BOARD_CONFIGURATION],
+    });
+    return (result.data as any).updateBoardConfiguration.boardConfiguration;
+  };
+
+  return { update, loading, error };
+};
+
+export const useDeleteBoardConfiguration = () => {
+  const [deleteBoardConfiguration, { loading, error }] = useMutation(DELETE_BOARD_CONFIGURATION);
+
+  const remove = async (id: string): Promise<boolean> => {
+    const result = await deleteBoardConfiguration({
+      variables: {
+        boardConfigId: id,
+      },
+      refetchQueries: [GET_BOARD_CONFIGURATIONS, GET_DEFAULT_BOARD_CONFIGURATION],
+    });
+    return (result.data as any).deleteBoardConfiguration.success;
   };
 
   return { remove, loading, error };

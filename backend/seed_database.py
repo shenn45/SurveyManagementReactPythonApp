@@ -12,21 +12,22 @@ from botocore.exceptions import ClientError
 import uuid
 from datetime import datetime
 
+# Add environment variables for local DynamoDB at the top
+os.environ['AWS_ACCESS_KEY_ID'] = 'fake'
+os.environ['AWS_SECRET_ACCESS_KEY'] = 'fake'
+os.environ['DYNAMODB_ENDPOINT_URL'] = 'http://localhost:8001'
+
 # Add the backend directory to the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from models import SurveyType, SurveyStatus, Township
+from models import SurveyType, SurveyStatus, Township, BoardConfiguration
+from database import get_dynamodb
 import crud
+import schemas
 
 def get_local_dynamodb():
-    """Get a direct connection to local moto DynamoDB"""
-    return boto3.resource(
-        'dynamodb',
-        endpoint_url='http://localhost:8001',
-        aws_access_key_id='fake_access_key',
-        aws_secret_access_key='fake_secret_key',
-        region_name='us-east-1'
-    )
+    """Get a connection to local DynamoDB using the same method as the application"""
+    return get_dynamodb()
 
 def get_survey_types_direct():
     """Get survey types directly from local DynamoDB"""
@@ -322,17 +323,62 @@ def seed_townships():
     print(f"Created {created_count} townships out of {len(townships)} total.")
     return created_count
 
+def get_board_configurations_direct():
+    """Get board configurations directly from local DynamoDB"""
+    try:
+        dynamodb = get_local_dynamodb()
+        table = dynamodb.Table('BoardConfigurations')
+        response = table.scan(
+            FilterExpression=Attr('IsActive').eq(True)
+        )
+        return response.get('Items', [])
+    except Exception as e:
+        print(f"Error getting board configurations: {e}")
+        return []
+
+
+def seed_board_configurations():
+    """Seed default board configurations"""
+    print("\nSeeding board configurations...")
+    
+    # Default board configuration
+    default_boards = [
+        {
+            "BoardName": "Survey Board",
+            "Description": "Default kanban board for managing surveys",
+            "IsDefault": True
+        }
+    ]
+    
+    created_count = 0
+    for board_data in default_boards:
+        try:
+            board_config = schemas.BoardConfigurationCreate(**board_data)
+            result = crud.create_board_configuration(board_config)
+            if result:
+                created_count += 1
+                print(f"  ✓ Created board configuration: {board_data['BoardName']}")
+            else:
+                print(f"  ✗ Failed to create board configuration: {board_data['BoardName']}")
+        except Exception as e:
+            print(f"  ✗ Error creating board configuration {board_data['BoardName']}: {e}")
+    
+    return created_count
+
+
 def check_existing_data():
     """Check if there's already data in the tables"""
     existing_types = get_survey_types_direct()
     existing_statuses = get_survey_statuses_direct()
     existing_townships = get_townships_direct()
+    existing_boards = get_board_configurations_direct()
     
     print(f"Existing survey types: {len(existing_types)}")
     print(f"Existing survey statuses: {len(existing_statuses)}")
     print(f"Existing townships: {len(existing_townships)}")
+    print(f"Existing board configurations: {len(existing_boards)}")
     
-    return len(existing_types), len(existing_statuses), len(existing_townships)
+    return len(existing_types), len(existing_statuses), len(existing_townships), len(existing_boards)
 
 def main():
     """Main seeding function"""
@@ -342,9 +388,9 @@ def main():
     
     try:
         # Check existing data
-        type_count, status_count, township_count = check_existing_data()
+        type_count, status_count, township_count, board_count = check_existing_data()
         
-        if type_count > 0 or status_count > 0 or township_count > 0:
+        if type_count > 0 or status_count > 0 or township_count > 0 or board_count > 0:
             print(f"\nWarning: Found existing data in tables.")
             response = input("Do you want to proceed anyway? (y/N): ")
             if response.lower() not in ['y', 'yes']:
@@ -355,15 +401,17 @@ def main():
         types_created = seed_survey_types()
         statuses_created = seed_survey_statuses()
         townships_created = seed_townships()
+        boards_created = seed_board_configurations()
         
         print("\n" + "=" * 60)
         print("Seeding Summary:")
         print(f"Survey Types Created: {types_created}")
         print(f"Survey Statuses Created: {statuses_created}")
         print(f"Townships Created: {townships_created}")
+        print(f"Board Configurations Created: {boards_created}")
         print("=" * 60)
         
-        if types_created > 0 or statuses_created > 0 or townships_created > 0:
+        if types_created > 0 or statuses_created > 0 or townships_created > 0 or boards_created > 0:
             print("✓ Database seeding completed successfully!")
         else:
             print("⚠ No new records were created.")

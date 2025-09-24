@@ -134,6 +134,25 @@ class UserSettingsType(ObjectType):
     CreatedDate = DateTime()
     ModifiedDate = DateTime()
 
+class BoardConfigurationType(ObjectType):
+    BoardConfigId = String()
+    BoardName = String()
+    BoardSlug = String()
+    Description = String()
+    UserId = String()
+    IsDefault = Boolean()
+    IsActive = Boolean()
+    CreatedDate = DateTime()
+    ModifiedDate = DateTime()
+    CreatedBy = String()
+    ModifiedBy = String()
+
+class BoardConfigurationListResponse(ObjectType):
+    board_configurations = List(BoardConfigurationType)
+    total = Int()
+    page = Int()
+    size = Int()
+
 def model_to_survey(survey):
     """Convert Survey model to GraphQL type"""
     if not survey:
@@ -317,6 +336,24 @@ def model_to_survey_status(survey_status):
         IsActive=getattr(survey_status, 'IsActive', True)
     )
 
+def model_to_board_configuration(board_config):
+    """Convert BoardConfiguration model to GraphQL type"""
+    if not board_config:
+        return None
+    return BoardConfigurationType(
+        BoardConfigId=getattr(board_config, 'BoardConfigId', ''),
+        BoardName=getattr(board_config, 'BoardName', ''),
+        BoardSlug=getattr(board_config, 'BoardSlug', ''),
+        Description=getattr(board_config, 'Description', ''),
+        UserId=getattr(board_config, 'UserId', ''),
+        IsDefault=getattr(board_config, 'IsDefault', False),
+        IsActive=getattr(board_config, 'IsActive', True),
+        CreatedDate=getattr(board_config, 'CreatedDate', None),
+        ModifiedDate=getattr(board_config, 'ModifiedDate', None),
+        CreatedBy=getattr(board_config, 'CreatedBy', ''),
+        ModifiedBy=getattr(board_config, 'ModifiedBy', '')
+    )
+
 class Query(ObjectType):
     surveys = Field(SurveyListResponse, skip=Int(default_value=0), limit=Int(default_value=100), search=String())
     survey = Field(SurveyType, surveyId=String(required=True))
@@ -330,6 +367,10 @@ class Query(ObjectType):
     surveyStatuses = Field(List(SurveyStatusType))
     userSettings = Field(UserSettingsType, settingsType=String(required=True))
     allUserSettings = Field(List(UserSettingsType))
+    boardConfigurations = Field(List(BoardConfigurationType))
+    boardConfiguration = Field(BoardConfigurationType, boardConfigId=String(required=True))
+    boardConfigurationBySlug = Field(BoardConfigurationType, boardSlug=String(required=True))
+    defaultBoardConfiguration = Field(BoardConfigurationType)
 
     def resolve_surveys(self, info, skip=0, limit=100, search=None):
         try:
@@ -456,6 +497,44 @@ class Query(ObjectType):
         except Exception as e:
             print(f"Error resolving all user settings: {e}")
             return []
+
+    def resolve_boardConfigurations(self, info):
+        try:
+            board_configurations = crud.get_board_configurations()
+            return [model_to_board_configuration(bc) for bc in board_configurations]
+        except Exception as e:
+            print(f"Error resolving board configurations: {e}")
+            return []
+
+    def resolve_boardConfiguration(self, info, boardConfigId):
+        try:
+            board_config = crud.get_board_configuration(board_config_id=boardConfigId)
+            if board_config:
+                return model_to_board_configuration(board_config)
+            return None
+        except Exception as e:
+            print(f"Error resolving board configuration: {e}")
+            return None
+
+    def resolve_boardConfigurationBySlug(self, info, boardSlug):
+        try:
+            board_config = crud.get_board_configuration_by_slug(board_slug=boardSlug)
+            if board_config:
+                return model_to_board_configuration(board_config)
+            return None
+        except Exception as e:
+            print(f"Error resolving board configuration by slug: {e}")
+            return None
+
+    def resolve_defaultBoardConfiguration(self, info):
+        try:
+            board_config = crud.get_default_board_configuration()
+            if board_config:
+                return model_to_board_configuration(board_config)
+            return None
+        except Exception as e:
+            print(f"Error resolving default board configuration: {e}")
+            return None
 
 # Create simple schema with queries and mutations
 class CreateCustomerInput(graphene.InputObjectType):
@@ -645,6 +724,20 @@ class SurveyUpdateInput(graphene.InputObjectType):
 class UserSettingsInput(graphene.InputObjectType):
     SettingsType = String(required=True)
     SettingsData = String(required=True)  # JSON string
+
+class BoardConfigurationInput(graphene.InputObjectType):
+    BoardName = String(required=True)
+    Description = String()
+    UserId = String()
+    IsDefault = Boolean()
+    IsActive = Boolean()
+
+class BoardConfigurationUpdateInput(graphene.InputObjectType):
+    BoardName = String()
+    BoardSlug = String()
+    Description = String()
+    IsDefault = Boolean()
+    IsActive = Boolean()
 
 class CreateCustomerMutation(graphene.Mutation):
     class Arguments:
@@ -1135,6 +1228,75 @@ class UpsertUserSettingsMutation(graphene.Mutation):
             traceback.print_exc()
             return UpsertUserSettingsMutation(userSettings=None)
 
+class CreateBoardConfigurationMutation(graphene.Mutation):
+    class Arguments:
+        board_config = BoardConfigurationInput(required=True)
+    
+    board_configuration = Field(BoardConfigurationType)
+    
+    def mutate(self, info, board_config):
+        try:
+            import schemas
+            config_data = schemas.BoardConfigurationCreate(
+                BoardName=board_config.BoardName,
+                Description=board_config.Description,
+                UserId=board_config.UserId,
+                IsDefault=board_config.IsDefault if board_config.IsDefault is not None else False,
+                IsActive=board_config.IsActive if board_config.IsActive is not None else True
+            )
+            new_config = crud.create_board_configuration(config_data)
+            if new_config:
+                return CreateBoardConfigurationMutation(board_configuration=model_to_board_configuration(new_config))
+            else:
+                return CreateBoardConfigurationMutation(board_configuration=None)
+        except Exception as e:
+            print(f"Error creating board configuration: {e}")
+            import traceback
+            traceback.print_exc()
+            return CreateBoardConfigurationMutation(board_configuration=None)
+
+class UpdateBoardConfigurationMutation(graphene.Mutation):
+    class Arguments:
+        board_config_id = String(required=True)
+        board_config = BoardConfigurationUpdateInput(required=True)
+    
+    board_configuration = Field(BoardConfigurationType)
+    
+    def mutate(self, info, board_config_id, board_config):
+        try:
+            import schemas
+            config_data = schemas.BoardConfigurationUpdate(
+                BoardName=board_config.BoardName,
+                BoardSlug=board_config.BoardSlug,
+                Description=board_config.Description,
+                IsDefault=board_config.IsDefault,
+                IsActive=board_config.IsActive
+            )
+            updated_config = crud.update_board_configuration(board_config_id, config_data)
+            if updated_config:
+                return UpdateBoardConfigurationMutation(board_configuration=model_to_board_configuration(updated_config))
+            else:
+                return UpdateBoardConfigurationMutation(board_configuration=None)
+        except Exception as e:
+            print(f"Error updating board configuration: {e}")
+            import traceback
+            traceback.print_exc()
+            return UpdateBoardConfigurationMutation(board_configuration=None)
+
+class DeleteBoardConfigurationMutation(graphene.Mutation):
+    class Arguments:
+        board_config_id = String(required=True)
+    
+    success = Boolean()
+    
+    def mutate(self, info, board_config_id):
+        try:
+            success = crud.delete_board_configuration(board_config_id)
+            return DeleteBoardConfigurationMutation(success=success)
+        except Exception as e:
+            print(f"Error deleting board configuration: {e}")
+            return DeleteBoardConfigurationMutation(success=False)
+
 class Mutation(graphene.ObjectType):
     createCustomer = CreateCustomerMutation.Field()
     updateCustomer = UpdateCustomerMutation.Field()
@@ -1151,5 +1313,8 @@ class Mutation(graphene.ObjectType):
     createSurveyStatus = CreateSurveyStatusMutation.Field()
     updateSurveyStatus = UpdateSurveyStatusMutation.Field()
     upsertUserSettings = UpsertUserSettingsMutation.Field()
+    createBoardConfiguration = CreateBoardConfigurationMutation.Field()
+    updateBoardConfiguration = UpdateBoardConfigurationMutation.Field()
+    deleteBoardConfiguration = DeleteBoardConfigurationMutation.Field()
 
 schema = graphene.Schema(query=Query, mutation=Mutation)

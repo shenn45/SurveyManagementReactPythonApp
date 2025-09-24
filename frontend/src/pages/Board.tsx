@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { EyeIcon, EyeSlashIcon, AdjustmentsHorizontalIcon, XMarkIcon, PlusIcon, PencilIcon } from '@heroicons/react/24/outline';
-import { useSurveys, useSurveyStatuses, useUpdateSurvey, useCreateSurvey, useCustomers, useSurveyTypes, useCreateSurveyStatus, useUpdateSurveyStatus } from '../hooks/useGraphQLApi';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { EyeIcon, EyeSlashIcon, AdjustmentsHorizontalIcon, XMarkIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { useSurveys, useSurveyStatuses, useUpdateSurvey, useCreateSurvey, useCustomers, useSurveyTypes, useUpdateSurveyStatus, useDefaultBoardConfiguration, useUpdateBoardConfiguration, useBoardConfigurationBySlug } from '../hooks/useGraphQLApi';
 import { useBoardSettings } from '../hooks/useBoardSettings';
 import { Survey, SurveyStatus, SurveyCreate } from '../types';
 
-interface SurveyCard {
+interface SurveyCardProps {
   survey: Survey;
   onDragStart: (survey: Survey) => void;
   isUpdating?: boolean;
   onEdit: (survey: Survey) => void;
 }
 
-const SurveyCard: React.FC<SurveyCard> = ({ survey, onDragStart, isUpdating = false, onEdit }) => {
+const SurveyCard: React.FC<SurveyCardProps> = ({ survey, onDragStart, isUpdating = false, onEdit }) => {
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return 'Not set';
     return new Date(dateString).toLocaleDateString();
@@ -24,22 +25,22 @@ const SurveyCard: React.FC<SurveyCard> = ({ survey, onDragStart, isUpdating = fa
 
   return (
     <div 
-      className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3 hover:shadow-md transition-all cursor-move relative ${
-        isUpdating ? 'opacity-70' : ''
-      }`}
+      className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3 hover:shadow-md transition-all cursor-move relative"
       draggable={!isUpdating}
-      onDragStart={() => !isUpdating && onDragStart(survey)}
+      onDragStart={(e) => {
+        if (!isUpdating) {
+          e.stopPropagation(); // Prevent column drag
+          onDragStart(survey);
+        }
+      }}
     >
-      {/* Loading overlay */}
+      {/* Loading spinner in corner */}
       {isUpdating && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-lg z-10">
-          <div className="flex items-center space-x-2 text-blue-600">
-            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span className="text-sm font-medium">Updating...</span>
-          </div>
+        <div className="absolute top-2 right-2 z-10">
+          <svg className="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
         </div>
       )}
       
@@ -108,7 +109,7 @@ const SurveyCard: React.FC<SurveyCard> = ({ survey, onDragStart, isUpdating = fa
   );
 };
 
-interface BoardColumn {
+interface BoardColumnProps {
   status: SurveyStatus;
   surveys: Survey[];
   onHide: (statusId: string) => void;
@@ -122,9 +123,11 @@ interface BoardColumn {
   onRenameStatus: (newName: string) => void;
   editingStatus: SurveyStatus | null;
   setEditingStatus: React.Dispatch<React.SetStateAction<SurveyStatus | null>>;
+  onColumnDragStart: (e: React.DragEvent, statusId: string) => void;
+  draggedColumn: string | null;
 }
 
-const BoardColumn: React.FC<BoardColumn> = ({ 
+const BoardColumn: React.FC<BoardColumnProps> = ({ 
   status, 
   surveys, 
   onHide, 
@@ -137,7 +140,9 @@ const BoardColumn: React.FC<BoardColumn> = ({
   onEdit,
   onRenameStatus,
   editingStatus,
-  setEditingStatus
+  setEditingStatus,
+  onColumnDragStart,
+  draggedColumn
 }) => {
   const getColumnColor = (statusName: string) => {
     const name = statusName.toLowerCase();
@@ -189,6 +194,24 @@ const BoardColumn: React.FC<BoardColumn> = ({
             />
           ) : (
             <div className="flex items-center space-x-2">
+              {/* Add column drag handle */}
+              <div 
+                className={`cursor-move p-1 rounded transition-colors ${
+                  draggedColumn === status.SurveyStatusId 
+                    ? 'text-indigo-600 bg-indigo-100' 
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                }`}
+                draggable
+                onDragStart={(e) => {
+                  e.stopPropagation(); // Prevent bubbling
+                  onColumnDragStart(e, status.SurveyStatusId);
+                }}
+                title="Drag to reorder column"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
+                </svg>
+              </div>
               <h3 className={`font-semibold text-sm px-3 py-1 rounded-full ${getHeaderColor(status.StatusName)}`}>
                 {status.StatusName}
               </h3>
@@ -263,15 +286,22 @@ const BoardColumn: React.FC<BoardColumn> = ({
 };
 
 export default function Board() {
+  const { boardSlug } = useParams<{ boardSlug: string }>();
+  const navigate = useNavigate();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [draggedSurvey, setDraggedSurvey] = useState<Survey | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [updatingSurveyId, setUpdatingSurveyId] = useState<string | null>(null);
   
+  // Board configuration state
+  const [isEditingBoardName, setIsEditingBoardName] = useState(false);
+  const [boardName, setBoardName] = useState(''); // Start with empty string to avoid showing wrong name initially
+  const [tempBoardName, setTempBoardName] = useState('');
+  
   // Modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isColumnManagementOpen, setIsColumnManagementOpen] = useState(false);
   const [editingSurvey, setEditingSurvey] = useState<Survey | null>(null);
   const [prefilledStatusId, setPrefilledStatusId] = useState<string | null>(null);
   
@@ -288,7 +318,6 @@ export default function Board() {
   
   // Column management state
   const [editingStatus, setEditingStatus] = useState<SurveyStatus | null>(null);
-  const [newStatusName, setNewStatusName] = useState('');
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   const [formData, setFormData] = useState<SurveyCreate>({
     SurveyNumber: '',
@@ -310,17 +339,69 @@ export default function Board() {
     IsDelivered: false,
   });
   
-  // Fetch all surveys (we'll handle filtering on frontend for board view)
-  const { data: surveysData, loading: surveysLoading, error: surveysError, refetch } = useSurveys(1, 1000, searchTerm || undefined);
-  const { data: statusesData, loading: statusesLoading, refetch: refetchStatuses } = useSurveyStatuses();
+  // Fetch all surveys once on initial load (no search parameter - load everything)
+  const { data: surveysData, loading: surveysLoading, error: surveysError, refetch } = useSurveys(1, 1000);
+  const { data: statusesData, loading: statusesLoading } = useSurveyStatuses();
   const { update: updateSurvey, loading: updateLoading } = useUpdateSurvey();
   const { create: createSurvey, loading: createLoading } = useCreateSurvey();
   const { data: customersData } = useCustomers(1, 1000);
   const { data: surveyTypesData } = useSurveyTypes();
-  const { create: createSurveyStatus, loading: createStatusLoading } = useCreateSurveyStatus();
   const { update: updateSurveyStatus } = useUpdateSurveyStatus();
 
+  // Board configuration hooks - use slug if provided, otherwise default
+  const { data: boardConfigurationBySlug, loading: boardConfigBySlugLoading, refetch: refetchBoardConfigBySlug } = useBoardConfigurationBySlug(boardSlug || '');
+  const { data: defaultBoardConfiguration, loading: defaultBoardConfigLoading, refetch: refetchDefaultBoardConfig } = useDefaultBoardConfiguration();
+  const { update: updateBoardConfiguration } = useUpdateBoardConfiguration();
+
+  // Determine which board configuration to use
+  const boardConfiguration = boardSlug ? boardConfigurationBySlug : defaultBoardConfiguration;
+  const boardConfigLoading = boardSlug ? boardConfigBySlugLoading : defaultBoardConfigLoading;
+  const refetchBoardConfig = boardSlug ? refetchBoardConfigBySlug : refetchDefaultBoardConfig;
+
   const [groupedSurveys, setGroupedSurveys] = useState<{ [key: string]: Survey[] }>({});
+  const [optimisticUpdates, setOptimisticUpdates] = useState<{ [surveyId: string]: { StatusId: string } }>({});
+
+  // Memoize the search handler to prevent recreating on every render
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('Search input changed:', e.target.value);
+    e.preventDefault(); // Prevent any default form behavior
+    setSearchTerm(e.target.value);
+  }, []);
+
+  // Apply optimistic updates to survey data
+  const surveysWithOptimisticUpdates = useMemo(() => {
+    if (!surveysData?.surveys) return [];
+    
+    return surveysData.surveys.map(survey => {
+      const optimisticUpdate = optimisticUpdates[survey.SurveyId];
+      if (optimisticUpdate) {
+        return { ...survey, ...optimisticUpdate };
+      }
+      return survey;
+    });
+  }, [surveysData?.surveys, optimisticUpdates]);
+
+  // Memoize client-side filtered surveys for instant search results
+  const filteredSurveys = useMemo(() => {
+    if (!surveysWithOptimisticUpdates.length) return [];
+    
+    if (!searchTerm.trim()) {
+      return surveysWithOptimisticUpdates;
+    }
+    
+    const searchLower = searchTerm.toLowerCase();
+    return surveysWithOptimisticUpdates.filter(survey => 
+      survey.SurveyNumber?.toLowerCase().includes(searchLower) ||
+      survey.Title?.toLowerCase().includes(searchLower) ||
+      survey.Description?.toLowerCase().includes(searchLower) ||
+      survey.PurposeCode?.toLowerCase().includes(searchLower) ||
+      // Search by customer name if available
+      (customersData?.customers?.find(c => c.CustomerId === survey.CustomerId)?.CompanyName?.toLowerCase().includes(searchLower)) ||
+      // Search by survey type if available  
+      (surveyTypesData?.find(st => st.SurveyTypeId === survey.SurveyTypeId)?.SurveyTypeName?.toLowerCase().includes(searchLower))
+    );
+  }, [surveysWithOptimisticUpdates, searchTerm, customersData?.customers, surveyTypesData]);
+
 
   // Initialize column order when statuses are loaded or settings change
   useEffect(() => {
@@ -336,32 +417,51 @@ export default function Board() {
           .map(status => status.SurveyStatusId);
         
         const finalOrder = [...validOrder, ...newStatuses];
-        // Only update if the order has changed
-        if (JSON.stringify(finalOrder) !== JSON.stringify(boardSettings.columnOrder)) {
+        // Only update if the order has actually changed (deep comparison)
+        if (JSON.stringify(finalOrder.sort()) !== JSON.stringify(boardSettings.columnOrder.sort())) {
           updateColumnOrder(finalOrder);
         }
       } else {
         // First time - use default order
-        updateColumnOrder(statusesData.map(status => status.SurveyStatusId));
+        const defaultOrder = statusesData.map(status => status.SurveyStatusId);
+        // Only update if different from current
+        if (JSON.stringify(defaultOrder.sort()) !== JSON.stringify(boardSettings.columnOrder.sort())) {
+          updateColumnOrder(defaultOrder);
+        }
       }
     }
-  }, [statusesData, boardSettings.columnOrder, updateColumnOrder]);
+  }, [statusesData]); // Remove boardSettings.columnOrder and updateColumnOrder from dependencies
 
+  // Sync board configuration with local state
   useEffect(() => {
-    if (surveysData?.surveys && statusesData) {
-      // Group surveys by their status
-      const grouped = surveysData.surveys.reduce((acc, survey) => {
-        const statusId = survey.StatusId || 'unknown';
-        if (!acc[statusId]) {
-          acc[statusId] = [];
-        }
-        acc[statusId].push(survey);
-        return acc;
-      }, {} as { [key: string]: Survey[] });
-
-      setGroupedSurveys(grouped);
+    if (boardConfiguration?.BoardName && boardConfiguration.BoardName !== boardName) {
+      setBoardName(boardConfiguration.BoardName);
+    } else if (!boardConfigLoading && !boardConfiguration && boardName !== 'Survey Board') {
+      // Only set if different to prevent unnecessary updates
+      setBoardName('Survey Board');
     }
-  }, [surveysData, statusesData]);
+  }, [boardConfiguration, boardConfigLoading]); // Remove boardName from dependencies
+
+  // Memoize the surveys grouping - now we have a single source of truth
+  const memoizedGroupedSurveys = useMemo(() => {
+    if (!filteredSurveys || !statusesData) {
+      return {};
+    }
+
+    return filteredSurveys.reduce((acc, survey) => {
+      const statusId = survey.StatusId || 'unknown';
+      if (!acc[statusId]) {
+        acc[statusId] = [];
+      }
+      acc[statusId].push(survey);
+      return acc;
+    }, {} as { [key: string]: Survey[] });
+  }, [filteredSurveys, statusesData]);
+
+  // Update the groupedSurveys whenever memoized changes
+  useEffect(() => {
+    setGroupedSurveys(memoizedGroupedSurveys);
+  }, [memoizedGroupedSurveys]);
 
   const handleHideColumn = (statusId: string) => {
     hideColumn(statusId);
@@ -375,15 +475,15 @@ export default function Board() {
     showAllColumns();
   };
 
-  // Create survey handler
-  const handleCreateSurvey = (statusId: string) => {
+  // Memoize create survey handler
+  const handleCreateSurvey = useCallback((statusId: string) => {
     setPrefilledStatusId(statusId);
     setFormData(prev => ({ ...prev, StatusId: statusId }));
     setIsCreateModalOpen(true);
-  };
+  }, []);
 
-  // Edit survey handler
-  const handleEditSurvey = (survey: Survey) => {
+  // Memoize edit survey handler
+  const handleEditSurvey = useCallback((survey: Survey) => {
     setEditingSurvey(survey);
     setFormData({
       SurveyNumber: survey.SurveyNumber,
@@ -405,10 +505,10 @@ export default function Board() {
       IsDelivered: survey.IsDelivered,
     });
     setIsEditModalOpen(true);
-  };
+  }, []);
 
-  // Modal handlers
-  const resetForm = () => {
+  // Memoize modal handlers
+  const resetForm = useCallback(() => {
     setFormData({
       SurveyNumber: '',
       CustomerId: undefined,
@@ -428,17 +528,17 @@ export default function Board() {
       IsScanned: false,
       IsDelivered: false,
     });
-  };
+  }, [prefilledStatusId]);
 
-  const handleModalClose = () => {
+  const handleModalClose = useCallback(() => {
     setIsCreateModalOpen(false);
     setIsEditModalOpen(false);
     setEditingSurvey(null);
     setPrefilledStatusId(null);
     resetForm();
-  };
+  }, [resetForm]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (editingSurvey) {
@@ -451,26 +551,10 @@ export default function Board() {
     } catch (error) {
       console.error('Failed to save survey:', error);
     }
-  };
+  }, [editingSurvey, updateSurvey, formData, createSurvey, refetch, handleModalClose]);
 
-  // Column management handlers
-  const handleCreateStatus = async () => {
-    if (!newStatusName.trim()) return;
-    
-    try {
-      await createSurveyStatus({
-        StatusName: newStatusName.trim(),
-        Description: '',
-        IsActive: true
-      });
-      setNewStatusName('');
-      refetchStatuses();
-    } catch (error) {
-      console.error('Failed to create status:', error);
-    }
-  };
-
-  const handleRenameStatus = async (status: SurveyStatus, newName: string) => {
+  // Memoize column management handlers
+  const handleRenameStatus = useCallback(async (status: SurveyStatus, newName: string) => {
     if (!newName.trim() || newName === status.StatusName) {
       setEditingStatus(null);
       return;
@@ -493,20 +577,20 @@ export default function Board() {
       console.error('Error renaming status:', error);
       setEditingStatus(null);
     }
-  };
+  }, [updateSurveyStatus]);
 
-  // Column drag and drop handlers
-  const handleColumnDragStart = (e: React.DragEvent, statusId: string) => {
+  // Memoize column drag and drop handlers
+  const handleColumnDragStart = useCallback((e: React.DragEvent, statusId: string) => {
     setDraggedColumn(statusId);
     e.dataTransfer.effectAllowed = 'move';
-  };
+  }, []);
 
-  const handleColumnDragOver = (e: React.DragEvent) => {
+  const handleColumnDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-  };
+  }, []);
 
-  const handleColumnDrop = (e: React.DragEvent, targetStatusId: string) => {
+  const handleColumnDrop = useCallback((e: React.DragEvent, targetStatusId: string) => {
     e.preventDefault();
     
     if (!draggedColumn || draggedColumn === targetStatusId) {
@@ -524,26 +608,22 @@ export default function Board() {
     
     updateColumnOrder(newOrder);
     setDraggedColumn(null);
-  };
+  }, [draggedColumn, boardSettings.columnOrder, updateColumnOrder]);
 
-  // Drag and drop handlers
-  const handleDragStart = (survey: Survey) => {
+  // Memoize drag and drop handlers
+  const handleDragStart = useCallback((survey: Survey) => {
     setDraggedSurvey(survey);
-  };
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault(); // Allow drop
-  };
+  }, []);
 
-  const handleDragEnter = (statusId: string) => {
+  const handleDragEnter = useCallback((statusId: string) => {
     setDragOverColumn(statusId);
-  };
+  }, []);
 
-  const handleDragLeave = () => {
-    setDragOverColumn(null);
-  };
-
-  const handleDrop = async (e: React.DragEvent, targetStatusId: string) => {
+  const handleDrop = useCallback(async (e: React.DragEvent, targetStatusId: string) => {
     e.preventDefault();
     setDragOverColumn(null);
 
@@ -556,49 +636,107 @@ export default function Board() {
       // Set updating state
       setUpdatingSurveyId(draggedSurvey.SurveyId);
       
-      // Update the survey status
+      // Apply optimistic update - this will automatically trigger regrouping
+      setOptimisticUpdates(prev => ({
+        ...prev,
+        [draggedSurvey.SurveyId]: { StatusId: targetStatusId }
+      }));
+
+      // Update the survey status in the background
       await updateSurvey(draggedSurvey.SurveyId, {
         StatusId: targetStatusId
       });
 
-      // Optimistically update the local state
-      setGroupedSurveys(prev => {
-        const newGrouped = { ...prev };
-        
-        // Remove from old status
-        const oldStatusId = draggedSurvey.StatusId || 'unknown';
-        if (newGrouped[oldStatusId]) {
-          newGrouped[oldStatusId] = newGrouped[oldStatusId].filter(
-            s => s.SurveyId !== draggedSurvey.SurveyId
-          );
-        }
-        
-        // Add to new status
-        if (!newGrouped[targetStatusId]) {
-          newGrouped[targetStatusId] = [];
-        }
-        newGrouped[targetStatusId].push({
-          ...draggedSurvey,
-          StatusId: targetStatusId
-        });
-        
-        return newGrouped;
-      });
-
-      // Success - the optimistic update is sufficient
-      console.log('Survey status updated successfully');
+      // Success - keep the optimistic update as the new truth, no need to sync with API
+      // The optimistic update becomes the permanent state
+      console.log('Survey status updated successfully - keeping optimistic update');
+      
     } catch (error) {
       console.error('Failed to update survey status:', error);
       
-      // On error, refetch to restore correct state
-      refetch();
+      // On error, clear optimistic update and refetch to restore correct state
+      setOptimisticUpdates(prev => {
+        const { [draggedSurvey.SurveyId]: _, ...rest } = prev;
+        return rest;
+      });
+      await refetch();
       
-      // Optionally show error message to user
+      // Show error message to user
+      // TODO: Add toast notification
     } finally {
       setDraggedSurvey(null);
       setUpdatingSurveyId(null);
     }
-  };
+  }, [draggedSurvey, updateSurvey, refetch]);
+
+  // Memoize board name functions
+  const handleEditBoardName = useCallback(() => {
+    setTempBoardName(boardName);
+    setIsEditingBoardName(true);
+  }, [boardName]);
+
+  const handleSaveBoardName = useCallback(async () => {
+    if (tempBoardName.trim() && tempBoardName.trim() !== boardName) {
+      try {
+        if (boardConfiguration) {
+          const newSlug = tempBoardName.trim().toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+          await updateBoardConfiguration(boardConfiguration.BoardConfigId, {
+            BoardName: tempBoardName.trim(),
+            BoardSlug: newSlug
+          });
+          
+          // Update local state immediately
+          setBoardName(tempBoardName.trim());
+          
+          // Refetch to ensure cache is updated
+          await refetchBoardConfig();
+          
+          // Navigate to new slug route if it changed
+          if (!boardSlug || boardSlug !== newSlug) {
+            navigate(`/board/${newSlug}`, { replace: true });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to update board name:', error);
+        // Optionally show error message to user
+      }
+    }
+    setIsEditingBoardName(false);
+    setTempBoardName('');
+  }, [tempBoardName, boardName, boardConfiguration, updateBoardConfiguration, refetchBoardConfig, boardSlug, navigate]);
+
+  const handleCancelEditBoardName = useCallback(() => {
+    setIsEditingBoardName(false);
+    setTempBoardName('');
+  }, []);
+
+  const handleBoardNameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveBoardName();
+    } else if (e.key === 'Escape') {
+      handleCancelEditBoardName();
+    }
+  }, [handleSaveBoardName, handleCancelEditBoardName]);
+
+  // Memoize computed values to prevent unnecessary recalculations (MUST be before early returns!)
+  const activeStatuses = useMemo(() => 
+    statusesData?.filter(status => status.IsActive) || [], 
+    [statusesData]
+  );
+
+  const hiddenStatuses = useMemo(() => 
+    activeStatuses.filter(status => boardSettings.hiddenColumns.includes(status.SurveyStatusId)), 
+    [activeStatuses, boardSettings.hiddenColumns]
+  );
+  
+  // Memoize ordered statuses based on boardSettings.columnOrder
+  const orderedStatuses = useMemo(() => 
+    boardSettings.columnOrder
+      .map(id => activeStatuses.find(status => status.SurveyStatusId === id))
+      .filter((status): status is SurveyStatus => status !== undefined)
+      .concat(activeStatuses.filter(status => !boardSettings.columnOrder.includes(status.SurveyStatusId))), 
+    [boardSettings.columnOrder, activeStatuses]
+  );
 
   if (surveysLoading || statusesLoading || settingsLoading) {
     return (
@@ -644,19 +782,57 @@ export default function Board() {
     </div>
   );
 
-  const activeStatuses = statusesData?.filter(status => status.IsActive) || [];
-  const hiddenStatuses = activeStatuses.filter(status => boardSettings.hiddenColumns.includes(status.SurveyStatusId));
-  
-  // Order statuses based on boardSettings.columnOrder, then add any missing ones
-  const orderedStatuses = boardSettings.columnOrder
-    .map(id => activeStatuses.find(status => status.SurveyStatusId === id))
-    .filter((status): status is SurveyStatus => status !== undefined)
-    .concat(activeStatuses.filter(status => !boardSettings.columnOrder.includes(status.SurveyStatusId)));
-
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Survey Board</h1>
+        <div className="flex items-center space-x-2">
+          {isEditingBoardName ? (
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                value={tempBoardName}
+                onChange={(e) => setTempBoardName(e.target.value)}
+                onKeyDown={handleBoardNameKeyDown}
+                onBlur={handleSaveBoardName}
+                className="text-2xl font-bold text-gray-900 bg-transparent border-2 border-blue-500 rounded px-2 py-1 focus:outline-none focus:border-blue-700"
+                autoFocus
+              />
+              <button
+                onClick={handleSaveBoardName}
+                className="p-1 text-green-600 hover:text-green-800"
+                title="Save"
+              >
+                ✓
+              </button>
+              <button
+                onClick={handleCancelEditBoardName}
+                className="p-1 text-red-600 hover:text-red-800"
+                title="Cancel"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-2 group">
+              {boardConfigLoading ? (
+                <div className="h-8 w-48 bg-gray-200 rounded animate-pulse"></div>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {boardName || 'Survey Board'}
+                  </h1>
+                  <button
+                    onClick={handleEditBoardName}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600 transition-opacity"
+                    title="Edit board name"
+                  >
+                    <PencilIcon className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
         <p className="mt-2 text-gray-600">
           Kanban-style view of surveys organized by status
         </p>
@@ -670,16 +846,38 @@ export default function Board() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="flex-1 max-w-md">
-              <input
-                type="text"
-                placeholder="Search surveys..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search surveys by number, title, description, customer, or type..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                    title="Clear search"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
             <div className="text-sm text-gray-500">
-              Total: {surveysData?.total || 0} surveys
+              {searchTerm ? (
+                <>
+                  Showing {filteredSurveys.length} of {surveysData?.total || 0} surveys
+                  {filteredSurveys.length !== (surveysData?.total || 0) && (
+                    <span className="ml-2 text-blue-600 font-medium">
+                      (filtered)
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>Total: {surveysData?.total || 0} surveys</>
+              )}
             </div>
           </div>
           
@@ -723,8 +921,6 @@ export default function Board() {
             return (
               <div
                 key={status.SurveyStatusId}
-                draggable
-                onDragStart={(e) => handleColumnDragStart(e, status.SurveyStatusId)}
                 onDragOver={handleColumnDragOver}
                 onDrop={(e) => handleColumnDrop(e, status.SurveyStatusId)}
                 className={`${draggedColumn === status.SurveyStatusId ? 'opacity-50' : ''}`}
@@ -746,6 +942,8 @@ export default function Board() {
                   onRenameStatus={(newName) => handleRenameStatus(status, newName)}
                   editingStatus={editingStatus}
                   setEditingStatus={setEditingStatus}
+                  onColumnDragStart={handleColumnDragStart}
+                  draggedColumn={draggedColumn}
                 />
               </div>
             );
@@ -777,6 +975,8 @@ export default function Board() {
             onRenameStatus={(newName) => handleRenameStatus({ SurveyStatusId: 'unknown', StatusName: 'Unknown Status', Description: 'Surveys with unrecognized status', IsActive: true }, newName)}
             editingStatus={editingStatus}
             setEditingStatus={setEditingStatus}
+            onColumnDragStart={handleColumnDragStart}
+            draggedColumn={draggedColumn}
           />
         )}
       </div>

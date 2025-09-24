@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   BuildingOfficeIcon, 
@@ -8,11 +8,11 @@ import {
   MapIcon,
   Squares2X2Icon
 } from '@heroicons/react/24/outline';
+import { useDefaultBoardConfiguration } from '../hooks/useGraphQLApi';
 
-const navigation = [
+const staticNavigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
   { name: 'Surveys', href: '/surveys', icon: DocumentTextIcon },
-  { name: 'Board', href: '/board', icon: Squares2X2Icon },
   { name: 'Customers', href: '/customers', icon: UsersIcon },
   { name: 'Properties', href: '/properties', icon: BuildingOfficeIcon },
   { name: 'Townships', href: '/townships', icon: MapIcon },
@@ -24,6 +24,30 @@ function classNames(...classes: string[]) {
 
 export default function Sidebar() {
   const location = useLocation();
+  const { data: defaultBoardConfig } = useDefaultBoardConfiguration();
+  const [boardNavItem, setBoardNavItem] = useState({ 
+    name: 'Board', 
+    href: '/board', 
+    icon: Squares2X2Icon 
+  });
+
+  // Update board navigation when configuration changes
+  useEffect(() => {
+    if (defaultBoardConfig) {
+      setBoardNavItem({
+        name: defaultBoardConfig.BoardName || 'Board',
+        href: defaultBoardConfig.BoardSlug ? `/board/${defaultBoardConfig.BoardSlug}` : '/board',
+        icon: Squares2X2Icon
+      });
+    }
+  }, [defaultBoardConfig]);
+
+  // Create navigation with dynamic board item
+  const navigation = [
+    ...staticNavigation.slice(0, 2), // Dashboard, Surveys
+    boardNavItem, // Dynamic board item
+    ...staticNavigation.slice(2) // Customers, Properties, Townships
+  ];
 
   return (
     <div className="flex flex-col w-64 bg-gray-800">
@@ -32,7 +56,8 @@ export default function Sidebar() {
       </div>
       <nav className="flex-1 px-2 py-4 space-y-1">
         {navigation.map((item) => {
-          const isCurrent = location.pathname === item.href;
+          const isCurrent = location.pathname === item.href || 
+                           (item.href.startsWith('/board') && location.pathname.startsWith('/board'));
           return (
             <Link
               key={item.name}

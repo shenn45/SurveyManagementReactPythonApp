@@ -243,3 +243,37 @@ export interface UserSettingsUpdate {
   SettingsData?: Record<string, any>;
   IsActive?: boolean;
 }
+
+export interface BoardConfiguration {
+  BoardConfigId: string;
+  BoardName: string;
+  BoardSlug: string;
+  Description?: string;
+  UserId?: string;
+  IsDefault: boolean;
+  IsActive: boolean;
+  CreatedDate: string;
+  ModifiedDate: string;
+  CreatedBy?: string;
+  ModifiedBy?: string;
+}
+
+export interface BoardConfigurationCreate {
+  BoardName: string;
+  Description?: string;
+  UserId?: string;
+  IsDefault?: boolean;
+  IsActive?: boolean;
+}
+
+export interface BoardConfigurationUpdate {
+  BoardName?: string;
+  BoardSlug?: string;
+  Description?: string;
+  IsDefault?: boolean;
+  IsActive?: boolean;
+}
+
+export interface BoardConfigurationListResponse extends PaginatedResponse<BoardConfiguration> {
+  board_configurations: BoardConfiguration[];
+}

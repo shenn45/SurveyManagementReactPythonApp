@@ -329,3 +329,37 @@ class UserSettings(UserSettingsBase):
     
     class Config:
         from_attributes = True
+
+# Board Configuration Schemas
+class BoardConfigurationBase(BaseModel):
+    BoardName: str
+    Description: Optional[str] = None
+    UserId: Optional[str] = None
+    IsDefault: bool = False
+    IsActive: bool = True
+
+class BoardConfigurationCreate(BoardConfigurationBase):
+    pass
+
+class BoardConfigurationUpdate(BaseModel):
+    BoardName: Optional[str] = None
+    Description: Optional[str] = None
+    IsDefault: Optional[bool] = None
+    IsActive: Optional[bool] = None
+
+class BoardConfiguration(BoardConfigurationBase):
+    BoardConfigId: str
+    BoardSlug: str
+    CreatedDate: datetime
+    ModifiedDate: datetime
+    CreatedBy: Optional[str] = None
+    ModifiedBy: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class BoardConfigurationListResponse(BaseModel):
+    board_configurations: List[BoardConfiguration]
+    total: int
+    page: int
+    size: int
