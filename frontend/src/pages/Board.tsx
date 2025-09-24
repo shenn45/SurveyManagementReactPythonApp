@@ -25,22 +25,22 @@ const SurveyCard: React.FC<SurveyCardProps> = ({ survey, onDragStart, isUpdating
 
   return (
     <div 
-      className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3 hover:shadow-md transition-all cursor-move relative ${
-        isUpdating ? 'opacity-70' : ''
-      }`}
+      className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3 hover:shadow-md transition-all cursor-move relative"
       draggable={!isUpdating}
-      onDragStart={() => !isUpdating && onDragStart(survey)}
+      onDragStart={(e) => {
+        if (!isUpdating) {
+          e.stopPropagation(); // Prevent column drag
+          onDragStart(survey);
+        }
+      }}
     >
-      {/* Loading overlay */}
+      {/* Loading spinner in corner */}
       {isUpdating && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-lg z-10">
-          <div className="flex items-center space-x-2 text-blue-600">
-            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span className="text-sm font-medium">Updating...</span>
-          </div>
+        <div className="absolute top-2 right-2 z-10">
+          <svg className="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
         </div>
       )}
       
@@ -123,6 +123,8 @@ interface BoardColumnProps {
   onRenameStatus: (newName: string) => void;
   editingStatus: SurveyStatus | null;
   setEditingStatus: React.Dispatch<React.SetStateAction<SurveyStatus | null>>;
+  onColumnDragStart: (e: React.DragEvent, statusId: string) => void;
+  draggedColumn: string | null;
 }
 
 const BoardColumn: React.FC<BoardColumnProps> = ({ 
@@ -138,7 +140,9 @@ const BoardColumn: React.FC<BoardColumnProps> = ({
   onEdit,
   onRenameStatus,
   editingStatus,
-  setEditingStatus
+  setEditingStatus,
+  onColumnDragStart,
+  draggedColumn
 }) => {
   const getColumnColor = (statusName: string) => {
     const name = statusName.toLowerCase();
@@ -190,6 +194,24 @@ const BoardColumn: React.FC<BoardColumnProps> = ({
             />
           ) : (
             <div className="flex items-center space-x-2">
+              {/* Add column drag handle */}
+              <div 
+                className={`cursor-move p-1 rounded transition-colors ${
+                  draggedColumn === status.SurveyStatusId 
+                    ? 'text-indigo-600 bg-indigo-100' 
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                }`}
+                draggable
+                onDragStart={(e) => {
+                  e.stopPropagation(); // Prevent bubbling
+                  onColumnDragStart(e, status.SurveyStatusId);
+                }}
+                title="Drag to reorder column"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
+                </svg>
+              </div>
               <h3 className={`font-semibold text-sm px-3 py-1 rounded-full ${getHeaderColor(status.StatusName)}`}>
                 {status.StatusName}
               </h3>
@@ -337,6 +359,7 @@ export default function Board() {
   const refetchBoardConfig = boardSlug ? refetchBoardConfigBySlug : refetchDefaultBoardConfig;
 
   const [groupedSurveys, setGroupedSurveys] = useState<{ [key: string]: Survey[] }>({});
+  const [optimisticUpdates, setOptimisticUpdates] = useState<{ [surveyId: string]: { StatusId: string } }>({});
 
   // Memoize the search handler to prevent recreating on every render
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -345,16 +368,29 @@ export default function Board() {
     setSearchTerm(e.target.value);
   }, []);
 
-  // Memoize client-side filtered surveys for instant search results
-  const filteredSurveys = useMemo(() => {
+  // Apply optimistic updates to survey data
+  const surveysWithOptimisticUpdates = useMemo(() => {
     if (!surveysData?.surveys) return [];
     
+    return surveysData.surveys.map(survey => {
+      const optimisticUpdate = optimisticUpdates[survey.SurveyId];
+      if (optimisticUpdate) {
+        return { ...survey, ...optimisticUpdate };
+      }
+      return survey;
+    });
+  }, [surveysData?.surveys, optimisticUpdates]);
+
+  // Memoize client-side filtered surveys for instant search results
+  const filteredSurveys = useMemo(() => {
+    if (!surveysWithOptimisticUpdates.length) return [];
+    
     if (!searchTerm.trim()) {
-      return surveysData.surveys;
+      return surveysWithOptimisticUpdates;
     }
     
     const searchLower = searchTerm.toLowerCase();
-    return surveysData.surveys.filter(survey => 
+    return surveysWithOptimisticUpdates.filter(survey => 
       survey.SurveyNumber?.toLowerCase().includes(searchLower) ||
       survey.Title?.toLowerCase().includes(searchLower) ||
       survey.Description?.toLowerCase().includes(searchLower) ||
@@ -364,7 +400,7 @@ export default function Board() {
       // Search by survey type if available  
       (surveyTypesData?.find(st => st.SurveyTypeId === survey.SurveyTypeId)?.SurveyTypeName?.toLowerCase().includes(searchLower))
     );
-  }, [surveysData?.surveys, searchTerm, customersData?.customers, surveyTypesData]);
+  }, [surveysWithOptimisticUpdates, searchTerm, customersData?.customers, surveyTypesData]);
 
 
   // Initialize column order when statuses are loaded or settings change
@@ -406,10 +442,10 @@ export default function Board() {
     }
   }, [boardConfiguration, boardConfigLoading]); // Remove boardName from dependencies
 
-  // Memoize the surveys grouping to prevent constant recalculation
+  // Memoize the surveys grouping - now we have a single source of truth
   const memoizedGroupedSurveys = useMemo(() => {
-    if (!filteredSurveys || !statusesData || updatingSurveyId) {
-      return groupedSurveys; // Return existing state if updating
+    if (!filteredSurveys || !statusesData) {
+      return {};
     }
 
     return filteredSurveys.reduce((acc, survey) => {
@@ -420,14 +456,12 @@ export default function Board() {
       acc[statusId].push(survey);
       return acc;
     }, {} as { [key: string]: Survey[] });
-  }, [filteredSurveys, statusesData, updatingSurveyId, groupedSurveys]);
+  }, [filteredSurveys, statusesData]);
 
-  // Update the groupedSurveys effect to use memoized value
+  // Update the groupedSurveys whenever memoized changes
   useEffect(() => {
-    if (JSON.stringify(memoizedGroupedSurveys) !== JSON.stringify(groupedSurveys)) {
-      setGroupedSurveys(memoizedGroupedSurveys);
-    }
-  }, [memoizedGroupedSurveys]); // Remove groupedSurveys from dependency
+    setGroupedSurveys(memoizedGroupedSurveys);
+  }, [memoizedGroupedSurveys]);
 
   const handleHideColumn = (statusId: string) => {
     hideColumn(statusId);
@@ -602,51 +636,36 @@ export default function Board() {
       // Set updating state
       setUpdatingSurveyId(draggedSurvey.SurveyId);
       
-      // Optimistically update the local state first
-      setGroupedSurveys(prev => {
-        const newGrouped = { ...prev };
-        
-        // Remove from old status
-        const oldStatusId = draggedSurvey.StatusId || 'unknown';
-        if (newGrouped[oldStatusId]) {
-          newGrouped[oldStatusId] = newGrouped[oldStatusId].filter(
-            s => s.SurveyId !== draggedSurvey.SurveyId
-          );
-        }
-        
-        // Add to new status
-        if (!newGrouped[targetStatusId]) {
-          newGrouped[targetStatusId] = [];
-        }
-        newGrouped[targetStatusId].push({
-          ...draggedSurvey,
-          StatusId: targetStatusId
-        });
-        
-        return newGrouped;
-      });
+      // Apply optimistic update - this will automatically trigger regrouping
+      setOptimisticUpdates(prev => ({
+        ...prev,
+        [draggedSurvey.SurveyId]: { StatusId: targetStatusId }
+      }));
 
-      // Update the survey status
+      // Update the survey status in the background
       await updateSurvey(draggedSurvey.SurveyId, {
         StatusId: targetStatusId
       });
 
-      // Success - refresh data to ensure consistency
-      await refetch();
+      // Success - keep the optimistic update as the new truth, no need to sync with API
+      // The optimistic update becomes the permanent state
+      console.log('Survey status updated successfully - keeping optimistic update');
       
     } catch (error) {
       console.error('Failed to update survey status:', error);
       
-      // On error, refetch to restore correct state
+      // On error, clear optimistic update and refetch to restore correct state
+      setOptimisticUpdates(prev => {
+        const { [draggedSurvey.SurveyId]: _, ...rest } = prev;
+        return rest;
+      });
       await refetch();
       
-      // Optionally show error message to user
+      // Show error message to user
+      // TODO: Add toast notification
     } finally {
       setDraggedSurvey(null);
-      // Clear updating state after a small delay to allow refetch to complete
-      setTimeout(() => {
-        setUpdatingSurveyId(null);
-      }, 100);
+      setUpdatingSurveyId(null);
     }
   }, [draggedSurvey, updateSurvey, refetch]);
 
@@ -902,8 +921,6 @@ export default function Board() {
             return (
               <div
                 key={status.SurveyStatusId}
-                draggable
-                onDragStart={(e) => handleColumnDragStart(e, status.SurveyStatusId)}
                 onDragOver={handleColumnDragOver}
                 onDrop={(e) => handleColumnDrop(e, status.SurveyStatusId)}
                 className={`${draggedColumn === status.SurveyStatusId ? 'opacity-50' : ''}`}
@@ -925,6 +942,8 @@ export default function Board() {
                   onRenameStatus={(newName) => handleRenameStatus(status, newName)}
                   editingStatus={editingStatus}
                   setEditingStatus={setEditingStatus}
+                  onColumnDragStart={handleColumnDragStart}
+                  draggedColumn={draggedColumn}
                 />
               </div>
             );
@@ -956,6 +975,8 @@ export default function Board() {
             onRenameStatus={(newName) => handleRenameStatus({ SurveyStatusId: 'unknown', StatusName: 'Unknown Status', Description: 'Surveys with unrecognized status', IsActive: true }, newName)}
             editingStatus={editingStatus}
             setEditingStatus={setEditingStatus}
+            onColumnDragStart={handleColumnDragStart}
+            draggedColumn={draggedColumn}
           />
         )}
       </div>
