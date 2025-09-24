@@ -496,3 +496,125 @@ export const DELETE_TOWNSHIP = gql`
     }
   }
 `;
+
+// Board Configuration Queries
+export const GET_BOARD_CONFIGURATIONS = gql`
+  query GetBoardConfigurations {
+    boardConfigurations {
+      BoardConfigId
+      BoardName
+      BoardSlug
+      Description
+      UserId
+      IsDefault
+      IsActive
+      CreatedDate
+      ModifiedDate
+      CreatedBy
+      ModifiedBy
+    }
+  }
+`;
+
+export const GET_BOARD_CONFIGURATION = gql`
+  query GetBoardConfiguration($boardConfigId: String!) {
+    boardConfiguration(boardConfigId: $boardConfigId) {
+      BoardConfigId
+      BoardName
+      BoardSlug
+      Description
+      UserId
+      IsDefault
+      IsActive
+      CreatedDate
+      ModifiedDate
+      CreatedBy
+      ModifiedBy
+    }
+  }
+`;
+
+export const GET_BOARD_CONFIGURATION_BY_SLUG = gql`
+  query GetBoardConfigurationBySlug($boardSlug: String!) {
+    boardConfigurationBySlug(boardSlug: $boardSlug) {
+      BoardConfigId
+      BoardName
+      BoardSlug
+      Description
+      UserId
+      IsDefault
+      IsActive
+      CreatedDate
+      ModifiedDate
+      CreatedBy
+      ModifiedBy
+    }
+  }
+`;
+
+export const GET_DEFAULT_BOARD_CONFIGURATION = gql`
+  query GetDefaultBoardConfiguration {
+    defaultBoardConfiguration {
+      BoardConfigId
+      BoardName
+      BoardSlug
+      Description
+      UserId
+      IsDefault
+      IsActive
+      CreatedDate
+      ModifiedDate
+      CreatedBy
+      ModifiedBy
+    }
+  }
+`;
+
+// Board Configuration Mutations
+export const CREATE_BOARD_CONFIGURATION = gql`
+  mutation CreateBoardConfiguration($boardConfig: BoardConfigurationInput!) {
+    createBoardConfiguration(boardConfig: $boardConfig) {
+      boardConfiguration {
+        BoardConfigId
+        BoardName
+        BoardSlug
+        Description
+        UserId
+        IsDefault
+        IsActive
+        CreatedDate
+        ModifiedDate
+        CreatedBy
+        ModifiedBy
+      }
+    }
+  }
+`;
+
+export const UPDATE_BOARD_CONFIGURATION = gql`
+  mutation UpdateBoardConfiguration($boardConfigId: String!, $boardConfig: BoardConfigurationUpdateInput!) {
+    updateBoardConfiguration(boardConfigId: $boardConfigId, boardConfig: $boardConfig) {
+      boardConfiguration {
+        BoardConfigId
+        BoardName
+        BoardSlug
+        Description
+        UserId
+        IsDefault
+        IsActive
+        CreatedDate
+        ModifiedDate
+        CreatedBy
+        ModifiedBy
+      }
+    }
+  }
+`;
+
+export const DELETE_BOARD_CONFIGURATION = gql`
+  mutation DeleteBoardConfiguration($boardConfigId: String!) {
+    deleteBoardConfiguration(boardConfigId: $boardConfigId) {
+      success
+    }
+  }
+`;

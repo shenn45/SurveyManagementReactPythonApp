@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { EyeIcon, EyeSlashIcon, AdjustmentsHorizontalIcon, XMarkIcon, PlusIcon, PencilIcon } from '@heroicons/react/24/outline';
-import { useSurveys, useSurveyStatuses, useUpdateSurvey, useCreateSurvey, useCustomers, useSurveyTypes, useCreateSurveyStatus, useUpdateSurveyStatus } from '../hooks/useGraphQLApi';
+import { useParams, useNavigate } from 'react-router-dom';
+import { EyeIcon, EyeSlashIcon, AdjustmentsHorizontalIcon, XMarkIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { useSurveys, useSurveyStatuses, useUpdateSurvey, useCreateSurvey, useCustomers, useSurveyTypes, useUpdateSurveyStatus, useDefaultBoardConfiguration, useUpdateBoardConfiguration, useBoardConfigurationBySlug } from '../hooks/useGraphQLApi';
 import { Survey, SurveyStatus, SurveyCreate } from '../types';
 
-interface SurveyCard {
+interface SurveyCardProps {
   survey: Survey;
   onDragStart: (survey: Survey) => void;
   isUpdating?: boolean;
   onEdit: (survey: Survey) => void;
 }
 
-const SurveyCard: React.FC<SurveyCard> = ({ survey, onDragStart, isUpdating = false, onEdit }) => {
+const SurveyCard: React.FC<SurveyCardProps> = ({ survey, onDragStart, isUpdating = false, onEdit }) => {
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return 'Not set';
     return new Date(dateString).toLocaleDateString();
@@ -107,7 +108,7 @@ const SurveyCard: React.FC<SurveyCard> = ({ survey, onDragStart, isUpdating = fa
   );
 };
 
-interface BoardColumn {
+interface BoardColumnProps {
   status: SurveyStatus;
   surveys: Survey[];
   onHide: (statusId: string) => void;
@@ -123,7 +124,7 @@ interface BoardColumn {
   setEditingStatus: React.Dispatch<React.SetStateAction<SurveyStatus | null>>;
 }
 
-const BoardColumn: React.FC<BoardColumn> = ({ 
+const BoardColumn: React.FC<BoardColumnProps> = ({ 
   status, 
   surveys, 
   onHide, 
@@ -262,6 +263,9 @@ const BoardColumn: React.FC<BoardColumn> = ({
 };
 
 export default function Board() {
+  const { boardSlug } = useParams<{ boardSlug: string }>();
+  const navigate = useNavigate();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => {
     // Load hidden columns from localStorage on initial render
@@ -277,17 +281,20 @@ export default function Board() {
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [updatingSurveyId, setUpdatingSurveyId] = useState<string | null>(null);
   
+  // Board configuration state
+  const [isEditingBoardName, setIsEditingBoardName] = useState(false);
+  const [boardName, setBoardName] = useState(''); // Start with empty string to avoid showing wrong name initially
+  const [tempBoardName, setTempBoardName] = useState('');
+  
   // Modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isColumnManagementOpen, setIsColumnManagementOpen] = useState(false);
   const [editingSurvey, setEditingSurvey] = useState<Survey | null>(null);
   const [prefilledStatusId, setPrefilledStatusId] = useState<string | null>(null);
   
   // Column management state
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
   const [editingStatus, setEditingStatus] = useState<SurveyStatus | null>(null);
-  const [newStatusName, setNewStatusName] = useState('');
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   const [formData, setFormData] = useState<SurveyCreate>({
     SurveyNumber: '',
@@ -311,13 +318,22 @@ export default function Board() {
   
   // Fetch all surveys (we'll handle filtering on frontend for board view)
   const { data: surveysData, loading: surveysLoading, error: surveysError, refetch } = useSurveys(1, 1000, searchTerm || undefined);
-  const { data: statusesData, loading: statusesLoading, refetch: refetchStatuses } = useSurveyStatuses();
+  const { data: statusesData, loading: statusesLoading } = useSurveyStatuses();
   const { update: updateSurvey, loading: updateLoading } = useUpdateSurvey();
   const { create: createSurvey, loading: createLoading } = useCreateSurvey();
   const { data: customersData } = useCustomers(1, 1000);
   const { data: surveyTypesData } = useSurveyTypes();
-  const { create: createSurveyStatus, loading: createStatusLoading } = useCreateSurveyStatus();
   const { update: updateSurveyStatus } = useUpdateSurveyStatus();
+
+  // Board configuration hooks - use slug if provided, otherwise default
+  const { data: boardConfigurationBySlug, loading: boardConfigBySlugLoading, refetch: refetchBoardConfigBySlug } = useBoardConfigurationBySlug(boardSlug || '');
+  const { data: defaultBoardConfiguration, loading: defaultBoardConfigLoading, refetch: refetchDefaultBoardConfig } = useDefaultBoardConfiguration();
+  const { update: updateBoardConfiguration } = useUpdateBoardConfiguration();
+
+  // Determine which board configuration to use
+  const boardConfiguration = boardSlug ? boardConfigurationBySlug : defaultBoardConfiguration;
+  const boardConfigLoading = boardSlug ? boardConfigBySlugLoading : defaultBoardConfigLoading;
+  const refetchBoardConfig = boardSlug ? refetchBoardConfigBySlug : refetchDefaultBoardConfig;
 
   const [groupedSurveys, setGroupedSurveys] = useState<{ [key: string]: Survey[] }>({});
 
@@ -367,6 +383,16 @@ export default function Board() {
       }
     }
   }, [columnOrder]);
+
+  // Sync board configuration with local state
+  useEffect(() => {
+    if (boardConfiguration && boardConfiguration.BoardName) {
+      setBoardName(boardConfiguration.BoardName);
+    } else if (!boardConfigLoading && !boardConfiguration) {
+      // If loading is complete but no configuration found, use default
+      setBoardName('Survey Board');
+    }
+  }, [boardConfiguration, boardConfigLoading]);
 
   useEffect(() => {
     if (surveysData?.surveys && statusesData) {
@@ -484,22 +510,6 @@ export default function Board() {
   };
 
   // Column management handlers
-  const handleCreateStatus = async () => {
-    if (!newStatusName.trim()) return;
-    
-    try {
-      await createSurveyStatus({
-        StatusName: newStatusName.trim(),
-        Description: '',
-        IsActive: true
-      });
-      setNewStatusName('');
-      refetchStatuses();
-    } catch (error) {
-      console.error('Failed to create status:', error);
-    }
-  };
-
   const handleRenameStatus = async (status: SurveyStatus, newName: string) => {
     if (!newName.trim() || newName === status.StatusName) {
       setEditingStatus(null);
@@ -569,10 +579,6 @@ export default function Board() {
     setDragOverColumn(statusId);
   };
 
-  const handleDragLeave = () => {
-    setDragOverColumn(null);
-  };
-
   const handleDrop = async (e: React.DragEvent, targetStatusId: string) => {
     e.preventDefault();
     setDragOverColumn(null);
@@ -630,6 +636,55 @@ export default function Board() {
     }
   };
 
+  // Board name functions
+  const handleEditBoardName = () => {
+    setTempBoardName(boardName);
+    setIsEditingBoardName(true);
+  };
+
+  const handleSaveBoardName = async () => {
+    if (tempBoardName.trim() && tempBoardName.trim() !== boardName) {
+      try {
+        if (boardConfiguration) {
+          const newSlug = tempBoardName.trim().toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+          await updateBoardConfiguration(boardConfiguration.BoardConfigId, {
+            BoardName: tempBoardName.trim(),
+            BoardSlug: newSlug
+          });
+          
+          // Update local state immediately
+          setBoardName(tempBoardName.trim());
+          
+          // Refetch to ensure cache is updated
+          await refetchBoardConfig();
+          
+          // Navigate to new slug route if it changed
+          if (!boardSlug || boardSlug !== newSlug) {
+            navigate(`/board/${newSlug}`, { replace: true });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to update board name:', error);
+        // Optionally show error message to user
+      }
+    }
+    setIsEditingBoardName(false);
+    setTempBoardName('');
+  };
+
+  const handleCancelEditBoardName = () => {
+    setIsEditingBoardName(false);
+    setTempBoardName('');
+  };
+
+  const handleBoardNameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveBoardName();
+    } else if (e.key === 'Escape') {
+      handleCancelEditBoardName();
+    }
+  };
+
   if (surveysLoading || statusesLoading) {
     return (
       <div className="p-8">
@@ -677,7 +732,54 @@ export default function Board() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Survey Board</h1>
+        <div className="flex items-center space-x-2">
+          {isEditingBoardName ? (
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                value={tempBoardName}
+                onChange={(e) => setTempBoardName(e.target.value)}
+                onKeyDown={handleBoardNameKeyDown}
+                onBlur={handleSaveBoardName}
+                className="text-2xl font-bold text-gray-900 bg-transparent border-2 border-blue-500 rounded px-2 py-1 focus:outline-none focus:border-blue-700"
+                autoFocus
+              />
+              <button
+                onClick={handleSaveBoardName}
+                className="p-1 text-green-600 hover:text-green-800"
+                title="Save"
+              >
+                ✓
+              </button>
+              <button
+                onClick={handleCancelEditBoardName}
+                className="p-1 text-red-600 hover:text-red-800"
+                title="Cancel"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-2 group">
+              {boardConfigLoading ? (
+                <div className="h-8 w-48 bg-gray-200 rounded animate-pulse"></div>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {boardName || 'Survey Board'}
+                  </h1>
+                  <button
+                    onClick={handleEditBoardName}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600 transition-opacity"
+                    title="Edit board name"
+                  >
+                    <PencilIcon className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
         <p className="mt-2 text-gray-600">
           Kanban-style view of surveys organized by status
         </p>

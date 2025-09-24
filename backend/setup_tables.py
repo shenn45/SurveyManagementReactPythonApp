@@ -143,7 +143,8 @@ def setup_all_tables():
         'SurveyStatuses', 
         'Surveys',
         'SurveyFiles',
-        'Documents'
+        'Documents',
+        'BoardConfigurations'
     ]
     
     print(f"\n📋 Required tables: {all_tables}")

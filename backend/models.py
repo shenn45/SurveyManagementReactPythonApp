@@ -197,6 +197,24 @@ class Document(BaseModel):
             datetime: lambda v: v.isoformat()
         }
 
+class BoardConfiguration(BaseModel):
+    BoardConfigId: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    BoardName: str
+    BoardSlug: str  # URL-friendly version of the board name
+    Description: Optional[str] = None
+    UserId: Optional[str] = None  # For user-specific boards in the future
+    IsDefault: bool = False
+    IsActive: bool = True
+    CreatedDate: datetime = Field(default_factory=datetime.utcnow)
+    ModifiedDate: datetime = Field(default_factory=datetime.utcnow)
+    CreatedBy: Optional[str] = None
+    ModifiedBy: Optional[str] = None
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+
 # DynamoDB table configurations
 DYNAMODB_TABLES = {
     'Addresses': {
@@ -366,6 +384,31 @@ DYNAMODB_TABLES = {
         ],
         'AttributeDefinitions': [
             {'AttributeName': 'DocumentId', 'AttributeType': 'S'}
+        ]
+    },
+    'BoardConfigurations': {
+        'TableName': 'BoardConfigurations',
+        'KeySchema': [
+            {'AttributeName': 'BoardConfigId', 'KeyType': 'HASH'}
+        ],
+        'AttributeDefinitions': [
+            {'AttributeName': 'BoardConfigId', 'AttributeType': 'S'},
+            {'AttributeName': 'BoardSlug', 'AttributeType': 'S'},
+            {'AttributeName': 'UserId', 'AttributeType': 'S'}
+        ],
+        'GlobalSecondaryIndexes': [
+            {
+                'IndexName': 'BoardSlugIndex',
+                'KeySchema': [
+                    {'AttributeName': 'BoardSlug', 'KeyType': 'HASH'}
+                ]
+            },
+            {
+                'IndexName': 'UserIdIndex',
+                'KeySchema': [
+                    {'AttributeName': 'UserId', 'KeyType': 'HASH'}
+                ]
+            }
         ]
     }
 }
