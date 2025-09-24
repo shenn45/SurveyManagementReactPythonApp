@@ -395,8 +395,8 @@ export default function Board() {
   }, [boardConfiguration, boardConfigLoading]);
 
   useEffect(() => {
-    if (surveysData?.surveys && statusesData) {
-      // Group surveys by their status
+    if (surveysData?.surveys && statusesData && !updatingSurveyId) {
+      // Group surveys by their status (only when not updating to avoid race conditions)
       const grouped = surveysData.surveys.reduce((acc, survey) => {
         const statusId = survey.StatusId || 'unknown';
         if (!acc[statusId]) {
@@ -408,7 +408,7 @@ export default function Board() {
 
       setGroupedSurveys(grouped);
     }
-  }, [surveysData, statusesData]);
+  }, [surveysData, statusesData, updatingSurveyId]);
 
   const handleHideColumn = (statusId: string) => {
     setHiddenColumns(prev => {
@@ -592,12 +592,7 @@ export default function Board() {
       // Set updating state
       setUpdatingSurveyId(draggedSurvey.SurveyId);
       
-      // Update the survey status
-      await updateSurvey(draggedSurvey.SurveyId, {
-        StatusId: targetStatusId
-      });
-
-      // Optimistically update the local state
+      // Optimistically update the local state first
       setGroupedSurveys(prev => {
         const newGrouped = { ...prev };
         
@@ -621,18 +616,27 @@ export default function Board() {
         return newGrouped;
       });
 
-      // Success - the optimistic update is sufficient
-      console.log('Survey status updated successfully');
+      // Update the survey status
+      await updateSurvey(draggedSurvey.SurveyId, {
+        StatusId: targetStatusId
+      });
+
+      // Success - refresh data to ensure consistency
+      await refetch();
+      
     } catch (error) {
       console.error('Failed to update survey status:', error);
       
       // On error, refetch to restore correct state
-      refetch();
+      await refetch();
       
       // Optionally show error message to user
     } finally {
       setDraggedSurvey(null);
-      setUpdatingSurveyId(null);
+      // Clear updating state after a small delay to allow refetch to complete
+      setTimeout(() => {
+        setUpdatingSurveyId(null);
+      }, 100);
     }
   };
 
