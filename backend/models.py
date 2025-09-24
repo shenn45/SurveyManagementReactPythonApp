@@ -197,6 +197,20 @@ class Document(BaseModel):
             datetime: lambda v: v.isoformat()
         }
 
+class UserSettings(BaseModel):
+    UserSettingsId: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    UserId: str  # For now, we'll use a default user ID since we don't have user authentication
+    SettingsType: str  # e.g., "board_preferences", "dashboard_layout", etc.
+    SettingsData: Dict[str, Any]  # JSON data containing the actual settings
+    IsActive: bool = True
+    CreatedDate: datetime = Field(default_factory=datetime.utcnow)
+    ModifiedDate: datetime = Field(default_factory=datetime.utcnow)
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+
 class BoardConfiguration(BaseModel):
     BoardConfigId: str = Field(default_factory=lambda: str(uuid.uuid4()))
     BoardName: str
@@ -384,6 +398,26 @@ DYNAMODB_TABLES = {
         ],
         'AttributeDefinitions': [
             {'AttributeName': 'DocumentId', 'AttributeType': 'S'}
+        ]
+    },
+    'UserSettings': {
+        'TableName': 'UserSettings',
+        'KeySchema': [
+            {'AttributeName': 'UserSettingsId', 'KeyType': 'HASH'}
+        ],
+        'AttributeDefinitions': [
+            {'AttributeName': 'UserSettingsId', 'AttributeType': 'S'},
+            {'AttributeName': 'UserId', 'AttributeType': 'S'},
+            {'AttributeName': 'SettingsType', 'AttributeType': 'S'}
+        ],
+        'GlobalSecondaryIndexes': [
+            {
+                'IndexName': 'UserSettingsIndex',
+                'KeySchema': [
+                    {'AttributeName': 'UserId', 'KeyType': 'HASH'},
+                    {'AttributeName': 'SettingsType', 'KeyType': 'RANGE'}
+                ]
+            }
         ]
     },
     'BoardConfigurations': {

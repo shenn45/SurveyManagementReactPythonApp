@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 import graphene
-from routers import customers, surveys, properties, lookup, townships, board_configurations
+from routers import customers, surveys, properties, lookup, townships, user_settings, board_configurations
 from graphql_schema_simple import schema
 
 app = FastAPI(
@@ -82,6 +82,7 @@ app.include_router(surveys.router, prefix="/api")
 app.include_router(properties.router, prefix="/api")
 app.include_router(townships.router, prefix="/api")
 app.include_router(lookup.router, prefix="/api")
+app.include_router(user_settings.router, prefix="/api")
 app.include_router(board_configurations.router, prefix="/api")
 
 @app.get("/")

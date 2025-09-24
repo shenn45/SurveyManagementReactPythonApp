@@ -222,6 +222,28 @@ export interface TownshipListResponse extends PaginatedResponse<Township> {
   townships: Township[];
 }
 
+export interface UserSettings {
+  UserSettingsId: string;
+  UserId: string;
+  SettingsType: string;
+  SettingsData: Record<string, any>;
+  IsActive: boolean;
+  CreatedDate: string;
+  ModifiedDate: string;
+}
+
+export interface UserSettingsCreate {
+  UserId: string;
+  SettingsType: string;
+  SettingsData: Record<string, any>;
+  IsActive?: boolean;
+}
+
+export interface UserSettingsUpdate {
+  SettingsData?: Record<string, any>;
+  IsActive?: boolean;
+}
+
 export interface BoardConfiguration {
   BoardConfigId: string;
   BoardName: string;

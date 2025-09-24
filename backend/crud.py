@@ -898,6 +898,140 @@ def delete_township(township_id: str) -> bool:
         return False
 
 
+# UserSettings CRUD operations
+def create_user_settings(settings_data: schemas.UserSettingsCreate) -> Optional[UserSettings]:
+    """Create new user settings"""
+    table = get_table('UserSettings')
+    try:
+        settings = UserSettings(
+            UserId=settings_data.UserId,
+            SettingsType=settings_data.SettingsType,
+            SettingsData=settings_data.SettingsData,
+            IsActive=settings_data.IsActive
+        )
+        
+        item = serialize_item(settings.dict())
+        table.put_item(Item=item)
+        return settings
+        
+    except ClientError as e:
+        print(f"Error creating user settings: {e}")
+        return None
+
+
+def get_user_settings(user_id: str, settings_type: str) -> Optional[UserSettings]:
+    """Get user settings by user ID and settings type"""
+    table = get_table('UserSettings')
+    try:
+        # Use GSI to query by UserId and SettingsType
+        response = table.query(
+            IndexName='UserSettingsIndex',
+            KeyConditionExpression=Key('UserId').eq(user_id) & Key('SettingsType').eq(settings_type),
+            FilterExpression=Attr('IsActive').eq(True)
+        )
+        
+        items = response.get('Items', [])
+        if items:
+            # Return the first (and should be only) matching settings
+            return UserSettings(**deserialize_item(items[0]))
+        return None
+        
+    except ClientError as e:
+        print(f"Error getting user settings for {user_id}, {settings_type}: {e}")
+        return None
+
+
+def get_all_user_settings(user_id: str) -> List[UserSettings]:
+    """Get all settings for a user"""
+    table = get_table('UserSettings')
+    try:
+        # Use GSI to query by UserId
+        response = table.query(
+            IndexName='UserSettingsIndex',
+            KeyConditionExpression=Key('UserId').eq(user_id),
+            FilterExpression=Attr('IsActive').eq(True)
+        )
+        
+        items = response.get('Items', [])
+        return [UserSettings(**deserialize_item(item)) for item in items]
+        
+    except ClientError as e:
+        print(f"Error getting all user settings for {user_id}: {e}")
+        return []
+
+
+def update_user_settings(user_settings_id: str, settings_data: schemas.UserSettingsUpdate) -> Optional[UserSettings]:
+    """Update user settings"""
+    table = get_table('UserSettings')
+    try:
+        update_expression = "SET ModifiedDate = :modified_date"
+        expression_values = {
+            ':modified_date': serialize_datetime(datetime.utcnow())
+        }
+        
+        if settings_data.SettingsData is not None:
+            update_expression += ", SettingsData = :settings_data"
+            expression_values[':settings_data'] = settings_data.SettingsData
+            
+        if settings_data.IsActive is not None:
+            update_expression += ", IsActive = :is_active"
+            expression_values[':is_active'] = settings_data.IsActive
+        
+        response = table.update_item(
+            Key={'UserSettingsId': user_settings_id},
+            UpdateExpression=update_expression,
+            ExpressionAttributeValues=expression_values,
+            ReturnValues='ALL_NEW'
+        )
+        
+        item = response.get('Attributes')
+        if item:
+            return UserSettings(**deserialize_item(item))
+        return None
+        
+    except ClientError as e:
+        print(f"Error updating user settings {user_settings_id}: {e}")
+        return None
+
+
+def upsert_user_settings(user_id: str, settings_type: str, settings_data: dict) -> Optional[UserSettings]:
+    """Create or update user settings"""
+    # First try to get existing settings
+    existing_settings = get_user_settings(user_id, settings_type)
+    
+    if existing_settings:
+        # Update existing settings
+        update_data = schemas.UserSettingsUpdate(SettingsData=settings_data)
+        return update_user_settings(existing_settings.UserSettingsId, update_data)
+    else:
+        # Create new settings
+        create_data = schemas.UserSettingsCreate(
+            UserId=user_id,
+            SettingsType=settings_type,
+            SettingsData=settings_data
+        )
+        return create_user_settings(create_data)
+
+
+def delete_user_settings(user_settings_id: str) -> bool:
+    """Soft delete user settings by setting IsActive to False"""
+    table = get_table('UserSettings')
+    try:
+        table.update_item(
+            Key={'UserSettingsId': user_settings_id},
+            UpdateExpression='SET IsActive = :is_active, ModifiedDate = :modified_date',
+            ExpressionAttributeValues={
+                ':is_active': False,
+                ':modified_date': serialize_datetime(datetime.utcnow())
+            }
+        )
+        return True
+        
+    except ClientError as e:
+        print(f"Error deleting user settings {user_settings_id}: {e}")
+        return False
+
+
 # Board Configuration CRUD operations
 def create_board_configuration(board_config: schemas.BoardConfigurationCreate) -> BoardConfiguration:
     """Create a new board configuration"""
