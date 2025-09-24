@@ -25,7 +25,7 @@ const SurveyCard: React.FC<SurveyCardProps> = ({ survey, onDragStart, isUpdating
 
   return (
     <div 
-      className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3 hover:shadow-md transition-all cursor-move relative"
+      className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 md:p-4 mb-3 hover:shadow-md transition-all cursor-move relative"
       draggable={!isUpdating}
       onDragStart={(e) => {
         if (!isUpdating) {
@@ -46,7 +46,7 @@ const SurveyCard: React.FC<SurveyCardProps> = ({ survey, onDragStart, isUpdating
       
       <div className="flex justify-between items-start mb-2">
         <h4 
-          className="font-medium text-gray-900 truncate cursor-pointer hover:text-blue-600 transition-colors"
+          className="font-medium text-gray-900 truncate cursor-pointer hover:text-blue-600 transition-colors text-sm md:text-base py-1"
           onClick={(e) => {
             e.stopPropagation();
             onEdit(survey);
@@ -55,7 +55,7 @@ const SurveyCard: React.FC<SurveyCardProps> = ({ survey, onDragStart, isUpdating
         >
           {survey.Title || survey.SurveyNumber}
         </h4>
-        <span className="text-xs text-gray-500 ml-2">{survey.SurveyNumber}</span>
+        <span className="text-xs text-gray-500 ml-2 flex-shrink-0">{survey.SurveyNumber}</span>
       </div>
       
       {survey.Description && (
@@ -166,7 +166,7 @@ const BoardColumn: React.FC<BoardColumnProps> = ({
 
   return (
     <div 
-      className={`flex-shrink-0 w-80 ${getColumnColor(status.StatusName)} border-2 rounded-lg transition-colors ${
+      className={`flex-shrink-0 w-full md:w-80 ${getColumnColor(status.StatusName)} border-2 rounded-lg transition-colors mb-4 md:mb-0 ${
         isDragOver ? 'ring-2 ring-indigo-500 ring-opacity-50 bg-indigo-50' : ''
       }`}
       onDragOver={onDragOver}
@@ -243,7 +243,7 @@ const BoardColumn: React.FC<BoardColumnProps> = ({
       </div>
       
       <div 
-        className="p-4 max-h-screen overflow-y-auto cursor-pointer"
+        className="p-3 md:p-4 max-h-[60vh] md:max-h-screen overflow-y-auto cursor-pointer"
         onClick={(e) => {
           // Only trigger if clicking on empty space (not on survey cards)
           if (e.target === e.currentTarget) {
@@ -293,6 +293,10 @@ export default function Board() {
   const [draggedSurvey, setDraggedSurvey] = useState<Survey | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [updatingSurveyId, setUpdatingSurveyId] = useState<string | null>(null);
+  
+  // Mobile responsiveness state
+  const [selectedMobileStatus, setSelectedMobileStatus] = useState<string | null>(null);
+  const [isMobileView, setIsMobileView] = useState(false);
   
   // Board configuration state
   const [isEditingBoardName, setIsEditingBoardName] = useState(false);
@@ -402,6 +406,17 @@ export default function Board() {
     );
   }, [surveysWithOptimisticUpdates, searchTerm, customersData?.customers, surveyTypesData]);
 
+
+  // Check for mobile view on mount and resize
+  useEffect(() => {
+    const checkMobileView = () => {
+      setIsMobileView(window.innerWidth < 768); // md breakpoint
+    };
+
+    checkMobileView();
+    window.addEventListener('resize', checkMobileView);
+    return () => window.removeEventListener('resize', checkMobileView);
+  }, []);
 
   // Initialize column order when statuses are loaded or settings change
   useEffect(() => {
@@ -783,8 +798,8 @@ export default function Board() {
   );
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
+    <div className="p-4 md:p-8">
+      <div className="mb-6 md:mb-8">
         <div className="flex items-center space-x-2">
           {isEditingBoardName ? (
             <div className="flex items-center space-x-2">
@@ -794,7 +809,7 @@ export default function Board() {
                 onChange={(e) => setTempBoardName(e.target.value)}
                 onKeyDown={handleBoardNameKeyDown}
                 onBlur={handleSaveBoardName}
-                className="text-2xl font-bold text-gray-900 bg-transparent border-2 border-blue-500 rounded px-2 py-1 focus:outline-none focus:border-blue-700"
+                className="text-xl md:text-2xl font-bold text-gray-900 bg-transparent border-2 border-blue-500 rounded px-2 py-1 focus:outline-none focus:border-blue-700"
                 autoFocus
               />
               <button
@@ -815,10 +830,10 @@ export default function Board() {
           ) : (
             <div className="flex items-center space-x-2 group">
               {boardConfigLoading ? (
-                <div className="h-8 w-48 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-6 md:h-8 w-32 md:w-48 bg-gray-200 rounded animate-pulse"></div>
               ) : (
                 <>
-                  <h1 className="text-2xl font-bold text-gray-900">
+                  <h1 className="text-xl md:text-2xl font-bold text-gray-900">
                     {boardName || 'Survey Board'}
                   </h1>
                   <button
@@ -833,7 +848,7 @@ export default function Board() {
             </div>
           )}
         </div>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-2 text-sm md:text-base text-gray-600">
           Kanban-style view of surveys organized by status
         </p>
       </div>
@@ -842,22 +857,22 @@ export default function Board() {
       {settingsWarning}
 
       {/* Search and filters */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+      <div className="mb-4 md:mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
             <div className="flex-1 max-w-md">
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search surveys by number, title, description, customer, or type..."
+                  placeholder={isMobileView ? "Search surveys..." : "Search surveys by number, title, description, customer, or type..."}
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm('')}
-                    className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 p-1"
                     title="Clear search"
                   >
                     ✕
@@ -865,7 +880,7 @@ export default function Board() {
                 )}
               </div>
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-xs md:text-sm text-gray-500 whitespace-nowrap">
               {searchTerm ? (
                 <>
                   Showing {filteredSurveys.length} of {surveysData?.total || 0} surveys
@@ -881,48 +896,73 @@ export default function Board() {
             </div>
           </div>
           
-          {/* Column visibility controls */}
-          <div className="flex items-center space-x-4">
-            {hiddenStatuses.length > 0 && (
-              <div className="flex items-center space-x-2">
-                <AdjustmentsHorizontalIcon className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-500">Hidden columns:</span>
-                {hiddenStatuses.map((status) => (
-                  <button
-                    key={status.SurveyStatusId}
-                    onClick={() => handleShowColumn(status.SurveyStatusId)}
-                    className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
-                    title={`Show ${status.StatusName} column`}
-                  >
-                    <EyeIcon className="h-3 w-3 mr-1" />
-                    {status.StatusName}
-                  </button>
-                ))}
-                {hiddenStatuses.length > 1 && (
-                  <button
-                    onClick={handleShowAllColumns}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 underline"
-                  >
-                    Show all
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          {/* Mobile Status Selector */}
+          {isMobileView && (
+            <div className="w-full">
+              <select
+                value={selectedMobileStatus || ''}
+                onChange={(e) => setSelectedMobileStatus(e.target.value || null)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="">All Statuses</option>
+                {orderedStatuses
+                  .filter(status => !boardSettings.hiddenColumns.includes(status.SurveyStatusId))
+                  .map((status) => (
+                    <option key={status.SurveyStatusId} value={status.SurveyStatusId}>
+                      {status.StatusName} ({(groupedSurveys[status.SurveyStatusId] || []).length})
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
+          
+          {/* Column visibility controls - hidden on mobile, simplified on tablet */}
+          {!isMobileView && (
+            <div className="flex items-center space-x-2 md:space-x-4">
+              {hiddenStatuses.length > 0 && (
+                <div className="flex items-center space-x-2">
+                  <AdjustmentsHorizontalIcon className="h-4 md:h-5 w-4 md:w-5 text-gray-400" />
+                  <span className="text-xs md:text-sm text-gray-500 hidden md:inline">Hidden columns:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {hiddenStatuses.map((status) => (
+                      <button
+                        key={status.SurveyStatusId}
+                        onClick={() => handleShowColumn(status.SurveyStatusId)}
+                        className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                        title={`Show ${status.StatusName} column`}
+                      >
+                        <EyeIcon className="h-3 w-3 mr-1" />
+                        <span className="hidden sm:inline">{status.StatusName}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {hiddenStatuses.length > 1 && (
+                    <button
+                      onClick={handleShowAllColumns}
+                      className="text-xs text-indigo-600 hover:text-indigo-800 underline whitespace-nowrap"
+                    >
+                      Show all
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Board columns */}
-      <div className="flex space-x-6 overflow-x-auto pb-6">
+      <div className={`${isMobileView ? 'space-y-4' : 'flex space-x-6 overflow-x-auto'} pb-6`}>
         {orderedStatuses
           .filter(status => !boardSettings.hiddenColumns.includes(status.SurveyStatusId))
+          .filter(status => !isMobileView || !selectedMobileStatus || status.SurveyStatusId === selectedMobileStatus)
           .map((status) => {
             const surveys = groupedSurveys[status.SurveyStatusId] || [];
             return (
               <div
                 key={status.SurveyStatusId}
-                onDragOver={handleColumnDragOver}
-                onDrop={(e) => handleColumnDrop(e, status.SurveyStatusId)}
+                onDragOver={!isMobileView ? handleColumnDragOver : undefined}
+                onDrop={!isMobileView ? (e) => handleColumnDrop(e, status.SurveyStatusId) : undefined}
                 className={`${draggedColumn === status.SurveyStatusId ? 'opacity-50' : ''}`}
               >
                 <BoardColumn
@@ -931,8 +971,10 @@ export default function Board() {
                   onHide={handleHideColumn}
                   onDragStart={handleDragStart}
                   onDragOver={(e) => {
-                    handleDragOver(e);
-                    handleDragEnter(status.SurveyStatusId);
+                    if (!isMobileView) {
+                      handleDragOver(e);
+                      handleDragEnter(status.SurveyStatusId);
+                    }
                   }}
                   onDrop={handleDrop}
                   isDragOver={dragOverColumn === status.SurveyStatusId}
@@ -942,7 +984,7 @@ export default function Board() {
                   onRenameStatus={(newName) => handleRenameStatus(status, newName)}
                   editingStatus={editingStatus}
                   setEditingStatus={setEditingStatus}
-                  onColumnDragStart={handleColumnDragStart}
+                  onColumnDragStart={!isMobileView ? handleColumnDragStart : () => {}}
                   draggedColumn={draggedColumn}
                 />
               </div>
@@ -952,7 +994,8 @@ export default function Board() {
         {/* Unknown status column for surveys without a valid status */}
         {groupedSurveys['unknown'] && 
          groupedSurveys['unknown'].length > 0 && 
-         !boardSettings.hiddenColumns.includes('unknown') && (
+         !boardSettings.hiddenColumns.includes('unknown') &&
+         (!isMobileView || !selectedMobileStatus || selectedMobileStatus === 'unknown') && (
           <BoardColumn
             status={{
               SurveyStatusId: 'unknown',
@@ -964,8 +1007,10 @@ export default function Board() {
             onHide={handleHideColumn}
             onDragStart={handleDragStart}
             onDragOver={(e) => {
-              handleDragOver(e);
-              handleDragEnter('unknown');
+              if (!isMobileView) {
+                handleDragOver(e);
+                handleDragEnter('unknown');
+              }
             }}
             onDrop={handleDrop}
             isDragOver={dragOverColumn === 'unknown'}
@@ -975,7 +1020,7 @@ export default function Board() {
             onRenameStatus={(newName) => handleRenameStatus({ SurveyStatusId: 'unknown', StatusName: 'Unknown Status', Description: 'Surveys with unrecognized status', IsActive: true }, newName)}
             editingStatus={editingStatus}
             setEditingStatus={setEditingStatus}
-            onColumnDragStart={handleColumnDragStart}
+            onColumnDragStart={!isMobileView ? handleColumnDragStart : () => {}}
             draggedColumn={draggedColumn}
           />
         )}
@@ -983,15 +1028,15 @@ export default function Board() {
 
       {/* Create/Edit Survey Modal */}
       {(isCreateModalOpen || isEditModalOpen) && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-4">
+          <div className="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">
                 {editingSurvey ? 'Edit Survey' : 'Create New Survey'}
               </h3>
               <button
                 onClick={handleModalClose}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 p-1"
               >
                 <XMarkIcon className="h-6 w-6" />
               </button>
@@ -1007,7 +1052,7 @@ export default function Board() {
                     required
                     value={formData.SurveyNumber}
                     onChange={(e) => setFormData({ ...formData, SurveyNumber: e.target.value })}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="mt-1 block w-full text-sm md:text-base border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2"
                   />
                 </div>
 
@@ -1018,7 +1063,7 @@ export default function Board() {
                     type="text"
                     value={formData.Title}
                     onChange={(e) => setFormData({ ...formData, Title: e.target.value })}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="mt-1 block w-full text-sm md:text-base border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2"
                   />
                 </div>
 
@@ -1028,7 +1073,7 @@ export default function Board() {
                   <select
                     value={formData.CustomerId || ''}
                     onChange={(e) => setFormData({ ...formData, CustomerId: e.target.value || undefined })}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="mt-1 block w-full text-sm md:text-base border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2"
                   >
                     <option value="">Select Customer</option>
                     {customersData?.customers?.map((customer) => (
@@ -1045,7 +1090,7 @@ export default function Board() {
                   <select
                     value={formData.SurveyTypeId || ''}
                     onChange={(e) => setFormData({ ...formData, SurveyTypeId: e.target.value || undefined })}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="mt-1 block w-full text-sm md:text-base border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2"
                   >
                     <option value="">Select Type</option>
                     {surveyTypesData?.map((type) => (
@@ -1062,7 +1107,7 @@ export default function Board() {
                   <select
                     value={formData.StatusId || ''}
                     onChange={(e) => setFormData({ ...formData, StatusId: e.target.value || undefined })}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-blue-50"
+                    className="mt-1 block w-full text-sm md:text-base border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-blue-50 px-3 py-2"
                   >
                     <option value="">Select Status</option>
                     {statusesData?.map((status) => (
@@ -1081,7 +1126,7 @@ export default function Board() {
                     step="0.01"
                     value={formData.QuotedPrice || ''}
                     onChange={(e) => setFormData({ ...formData, QuotedPrice: parseFloat(e.target.value) || 0 })}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="mt-1 block w-full text-sm md:text-base border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2"
                   />
                 </div>
               </div>
@@ -1093,23 +1138,23 @@ export default function Board() {
                   rows={3}
                   value={formData.Description}
                   onChange={(e) => setFormData({ ...formData, Description: e.target.value })}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="mt-1 block w-full text-sm md:text-base border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2"
                 />
               </div>
 
               {/* Form Actions */}
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end space-y-2 space-y-reverse sm:space-y-0 sm:space-x-3 pt-4">
                 <button
                   type="button"
                   onClick={handleModalClose}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createLoading || updateLoading}
-                  className="px-4 py-2 bg-indigo-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                  className="w-full sm:w-auto px-4 py-2 bg-indigo-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                 >
                   {createLoading || updateLoading ? 
                     (editingSurvey ? 'Updating...' : 'Creating...') : 
