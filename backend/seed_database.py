@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Database seeding script for Survey Management App
-Seeds the database with mock survey types and survey statuses
+Seeds the database with mock survey types, survey statuses, and townships
 """
 
 import sys
@@ -9,11 +9,13 @@ import os
 import boto3
 from boto3.dynamodb.conditions import Attr
 from botocore.exceptions import ClientError
+import uuid
+from datetime import datetime
 
 # Add the backend directory to the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from models import SurveyType, SurveyStatus
+from models import SurveyType, SurveyStatus, Township
 import crud
 
 def get_local_dynamodb():
@@ -55,9 +57,6 @@ def get_survey_statuses_direct():
 def create_survey_type_direct(survey_type_data):
     """Create survey type directly in local DynamoDB"""
     try:
-        import uuid
-        from datetime import datetime
-        
         dynamodb = get_local_dynamodb()
         table = dynamodb.Table('SurveyTypes')
         
@@ -67,8 +66,8 @@ def create_survey_type_direct(survey_type_data):
             'SurveyTypeName': survey_type_data['SurveyTypeName'],
             'Description': survey_type_data.get('Description', ''),
             'IsActive': True,
-            'CreatedDate': datetime.utcnow().isoformat(),
-            'ModifiedDate': datetime.utcnow().isoformat()
+            'CreatedDate': datetime.now().isoformat(),
+            'ModifiedDate': datetime.now().isoformat()
         }
         
         table.put_item(Item=item)
@@ -77,12 +76,47 @@ def create_survey_type_direct(survey_type_data):
         print(f"Error creating survey type: {e}")
         return False
 
+def get_townships_direct():
+    """Get townships directly from local DynamoDB"""
+    try:
+        dynamodb = get_local_dynamodb()
+        table = dynamodb.Table('Townships')
+        response = table.scan(
+            FilterExpression=Attr('IsActive').eq(True)
+        )
+        return response.get('Items', [])
+    except Exception as e:
+        print(f"Error getting townships: {e}")
+        return []
+
+def create_township_direct(township_data):
+    """Create township directly in local DynamoDB"""
+    try:
+        dynamodb = get_local_dynamodb()
+        table = dynamodb.Table('Townships')
+        
+        # Prepare the item
+        item = {
+            'TownshipId': str(uuid.uuid4()),
+            'TownshipName': township_data['TownshipName'],
+            'County': township_data['County'],
+            'State': township_data['State'],
+            'IsActive': True,
+            'CreatedDate': datetime.now().isoformat(),
+            'ModifiedDate': datetime.now().isoformat(),
+            'CreatedBy': 'system',
+            'ModifiedBy': 'system'
+        }
+        
+        table.put_item(Item=item)
+        return True
+    except Exception as e:
+        print(f"Error creating township: {e}")
+        return False
+
 def create_survey_status_direct(survey_status_data):
     """Create survey status directly in local DynamoDB"""
     try:
-        import uuid
-        from datetime import datetime
-        
         dynamodb = get_local_dynamodb()
         table = dynamodb.Table('SurveyStatuses')
         
@@ -92,8 +126,8 @@ def create_survey_status_direct(survey_status_data):
             'StatusName': survey_status_data['StatusName'],
             'Description': survey_status_data.get('Description', ''),
             'IsActive': True,
-            'CreatedDate': datetime.utcnow().isoformat(),
-            'ModifiedDate': datetime.utcnow().isoformat()
+            'CreatedDate': datetime.now().isoformat(),
+            'ModifiedDate': datetime.now().isoformat()
         }
         
         table.put_item(Item=item)
@@ -218,15 +252,87 @@ def seed_survey_statuses():
     print(f"Created {created_count} survey statuses out of {len(survey_statuses)} total.")
     return created_count
 
+def seed_townships():
+    """Seed the database with townships from Suffolk County, New York"""
+    townships = [
+        {
+            "TownshipName": "Babylon",
+            "County": "Suffolk",
+            "State": "New York"
+        },
+        {
+            "TownshipName": "Brookhaven",
+            "County": "Suffolk", 
+            "State": "New York"
+        },
+        {
+            "TownshipName": "East Hampton",
+            "County": "Suffolk",
+            "State": "New York"
+        },
+        {
+            "TownshipName": "Huntington",
+            "County": "Suffolk",
+            "State": "New York"
+        },
+        {
+            "TownshipName": "Islip",
+            "County": "Suffolk",
+            "State": "New York"
+        },
+        {
+            "TownshipName": "Riverhead",
+            "County": "Suffolk",
+            "State": "New York"
+        },
+        {
+            "TownshipName": "Shelter Island",
+            "County": "Suffolk",
+            "State": "New York"
+        },
+        {
+            "TownshipName": "Smith Point",
+            "County": "Suffolk",
+            "State": "New York"
+        },
+        {
+            "TownshipName": "Southampton",
+            "County": "Suffolk",
+            "State": "New York"
+        },
+        {
+            "TownshipName": "Southold",
+            "County": "Suffolk",
+            "State": "New York"
+        }
+    ]
+    
+    print("\nSeeding Townships (Suffolk County, NY)...")
+    created_count = 0
+    
+    for township_data in townships:
+        result = create_township_direct(township_data)
+        
+        if result:
+            created_count += 1
+            print(f"✓ Created township: {township_data['TownshipName']}, {township_data['County']} County, {township_data['State']}")
+        else:
+            print(f"✗ Failed to create township: {township_data['TownshipName']}")
+    
+    print(f"Created {created_count} townships out of {len(townships)} total.")
+    return created_count
+
 def check_existing_data():
     """Check if there's already data in the tables"""
     existing_types = get_survey_types_direct()
     existing_statuses = get_survey_statuses_direct()
+    existing_townships = get_townships_direct()
     
     print(f"Existing survey types: {len(existing_types)}")
     print(f"Existing survey statuses: {len(existing_statuses)}")
+    print(f"Existing townships: {len(existing_townships)}")
     
-    return len(existing_types), len(existing_statuses)
+    return len(existing_types), len(existing_statuses), len(existing_townships)
 
 def main():
     """Main seeding function"""
@@ -236,9 +342,9 @@ def main():
     
     try:
         # Check existing data
-        type_count, status_count = check_existing_data()
+        type_count, status_count, township_count = check_existing_data()
         
-        if type_count > 0 or status_count > 0:
+        if type_count > 0 or status_count > 0 or township_count > 0:
             print(f"\nWarning: Found existing data in tables.")
             response = input("Do you want to proceed anyway? (y/N): ")
             if response.lower() not in ['y', 'yes']:
@@ -248,14 +354,16 @@ def main():
         # Seed the data
         types_created = seed_survey_types()
         statuses_created = seed_survey_statuses()
+        townships_created = seed_townships()
         
         print("\n" + "=" * 60)
         print("Seeding Summary:")
         print(f"Survey Types Created: {types_created}")
         print(f"Survey Statuses Created: {statuses_created}")
+        print(f"Townships Created: {townships_created}")
         print("=" * 60)
         
-        if types_created > 0 or statuses_created > 0:
+        if types_created > 0 or statuses_created > 0 or townships_created > 0:
             print("✓ Database seeding completed successfully!")
         else:
             print("⚠ No new records were created.")
